@@ -1,0 +1,30 @@
+{
+	"name": "obsidian-citation-core",
+	"version": "0.1.0",
+	"description": "How a note becomes pandoc's input, with its links turned into real citations: shared by Due Credit and its sibling plugins.",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"scripts": {
+		"typecheck": "tsc -noEmit -skipLibCheck",
+		"lint": "eslint .",
+		"test": "vitest run --passWithNoTests"
+	},
+	"author": "Jorrit van der Heide",
+	"license": "EUPL-1.2",
+	"devDependencies": {
+		"@codemirror/state": "6.5.0",
+		"@codemirror/view": "6.38.6",
+		"@eslint/js": "^9.39.4",
+		"@types/node": "^22.15.17",
+		"eslint": "^9.39.4",
+		"eslint-plugin-obsidianmd": "^0.4.0",
+		"globals": "^17.6.0",
+		"jiti": "^2.6.1",
+		"obsidian": "~1.13.1",
+		"typescript": "^5.8.3",
+		"typescript-eslint": "^8.59.1",
+		"vitest": "^3.2.7"
+	}
+}
