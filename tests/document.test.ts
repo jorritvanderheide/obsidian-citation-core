@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentMetadata, inputFiles, lineBreaks, noteStyle, pandocArgs, refused, splitArgs, styled, type Run } from '../src/core/document';
+import { documentMetadata, inputFiles, lineBreaks, noteStyle, pandocArgs, postArgs, postMetadata, postProperties, readReferences, refused, splitArgs, styled, type Run } from '../src/core/document';
 
 describe('documentMetadata', () => {
 	it('takes the title from the heading first, then the property, then the name', () => {
@@ -199,5 +199,42 @@ describe('pandocArgs', () => {
 
 	it('exports without a bibliography when there is none', () => {
 		expect(pandocArgs('md', { ...run, bibliography: null }).some((arg) => arg.startsWith('--bibliography'))).toBe(false);
+	});
+});
+
+describe('a post', () => {
+	it('takes only the properties a post has, so the rest of the frontmatter stays in the vault', () => {
+		expect(postProperties({ summary: ' Why. ', categories: ['tech', ' ', 3, 'garden'], slug: 'quiet', tags: ['secret'] })).toEqual({ summary: 'Why.', categories: ['tech', 'garden'], slug: 'quiet' });
+		expect(postProperties({ categories: 'tech' })).toEqual({ summary: null, categories: ['tech'], slug: null });
+		expect(postProperties(null)).toEqual({ summary: null, categories: [], slug: null });
+	});
+
+	it('gives pandoc the title and language, and a heading for the references only as HTML', () => {
+		const frontmatter = { title: 'T', lang: 'nl', author: 'A', tags: ['secret'] };
+		expect(postMetadata(frontmatter, null, 'n', false, 'markdown')).toEqual({ title: 'T', lang: 'nl' });
+		expect(postMetadata(frontmatter, null, 'n', false, 'html')).toEqual({ title: 'T', lang: 'nl', 'reference-section-title': 'References' });
+		expect(postMetadata(null, 'Heading', 'n', true, 'html')['reference-section-title']).toBe('Bibliography');
+	});
+
+	it('runs the references filter after citeproc and before the paths are cleared, as Markdown only', () => {
+		const run = { obsidian: 'o.lua', filter: 'f.lua', postReferences: 'p.lua', afterCiteproc: 'a.lua', metadata: 'm.json', bibliography: 'l.bib', csl: null, resourcePath: '.', hardLineBreaks: false, references: 'r.json', output: 'out' };
+		const markdown = postArgs('markdown', run);
+		expect(markdown.indexOf('--citeproc')).toBeLessThan(markdown.indexOf('--lua-filter=p.lua'));
+		expect(markdown.indexOf('--lua-filter=p.lua')).toBeLessThan(markdown.indexOf('--lua-filter=a.lua'));
+		expect(markdown).toContain('--to=gfm-raw_html');
+		expect(markdown).toContain('--metadata=references-out=r.json');
+		const html = postArgs('html', run);
+		expect(html).toContain('--to=html');
+		expect(html).not.toContain('--lua-filter=p.lua');
+		expect(html).not.toContain('--metadata=link-citations=true');
+	});
+
+	it('reads the references the filter wrote, and refuses what it did not', () => {
+		expect(readReferences('[{"key":"a","text":"A.","url":"https://x"},{"key":"b","text":"B."}]')).toEqual([
+			{ key: 'a', text: 'A.', url: 'https://x' },
+			{ key: 'b', text: 'B.', url: null },
+		]);
+		expect(() => readReferences('{}')).toThrow();
+		expect(() => readReferences('[{"text":"A."}]')).toThrow();
 	});
 });

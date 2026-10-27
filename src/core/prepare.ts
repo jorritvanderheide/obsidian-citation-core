@@ -1,7 +1,7 @@
 // A note, made into what pandoc is given: every step, in its order.
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
-import { documentMetadata } from './document';
+import { documentMetadata, postMetadata, type Post } from './document';
 import { citeByKey, dropPluginBlocks, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
@@ -33,6 +33,8 @@ export interface Options {
 	keys: Set<string> | null;
 	/** Whether the citation style puts citations in footnotes, from `noteStyle`. */
 	noteStyle: boolean;
+	/** A post for a website, as Markdown or HTML, rather than a document: its metadata is a post's (`postMetadata`). */
+	post?: Post;
 }
 
 export interface Prepared {
@@ -96,6 +98,9 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	const { title, body: lifted } = liftHeadings(citeByKey(footnotes(prose), propertyOf));
 	// Forward slashes, which pandoc reads on every platform.
 	const markdown = imageEmbeds(lifted, (linkpath) => vault.resolve(linkpath)?.file.replace(/\\/g, '/') ?? null);
-	const metadata = documentMetadata(yaml === null ? null : vault.parseYaml(yaml), title, options.name, options.noteStyle);
+	const frontmatter = yaml === null ? null : vault.parseYaml(yaml);
+	const metadata = options.post
+		? postMetadata(frontmatter, title, options.name, options.noteStyle, options.post)
+		: documentMetadata(frontmatter, title, options.name, options.noteStyle);
 	return { markdown, metadata, missing };
 }

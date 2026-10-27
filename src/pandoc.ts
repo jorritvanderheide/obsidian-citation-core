@@ -5,6 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import afterCiteproc from '../pandoc/after-citeproc.lua';
 import obsidian from '../pandoc/obsidian.lua';
+import postReferences from '../pandoc/post-references.lua';
 import citations from '../pandoc/wikilink-citations.lua';
 import bold from '../fonts/OpenSans-Bold.ttf';
 import boldItalic from '../fonts/OpenSans-BoldItalic.ttf';
@@ -22,11 +23,12 @@ export class ExportError extends Error {}
  * Pandoc takes all of them as paths. A plugin ships as one `main.js`, so the
  * filters and the template are bundled into it as text, and the font as bytes,
  * and written out for each export. The metadata is JSON, which pandoc reads as
- * the YAML it is.
+ * the YAML it is. A post's references come back in a file of their own, which
+ * `references` names and pandoc writes (`post-references.lua`).
  */
 export async function withFiles<T>(
 	metadata: Record<string, unknown>,
-	use: (files: { obsidian: string; filter: string; afterCiteproc: string; template: string; fonts: string; metadata: string }) => Promise<T>,
+	use: (files: { obsidian: string; filter: string; afterCiteproc: string; postReferences: string; template: string; fonts: string; metadata: string; references: string }) => Promise<T>,
 ): Promise<T> {
 	const dir = await mkdtemp(join(tmpdir(), 'obsidian-due-credit-'));
 	try {
@@ -34,13 +36,16 @@ export async function withFiles<T>(
 			obsidian: join(dir, 'obsidian.lua'),
 			filter: join(dir, 'wikilink-citations.lua'),
 			afterCiteproc: join(dir, 'after-citeproc.lua'),
+			postReferences: join(dir, 'post-references.lua'),
 			template: join(dir, 'markdown.template'),
 			fonts: join(dir, 'fonts'),
 			metadata: join(dir, 'metadata.json'),
+			references: join(dir, 'references.json'),
 		};
 		await writeFile(files.obsidian, obsidian);
 		await writeFile(files.filter, citations);
 		await writeFile(files.afterCiteproc, afterCiteproc);
+		await writeFile(files.postReferences, postReferences);
 		await writeFile(files.template, MARKDOWN_TEMPLATE);
 		await mkdir(files.fonts);
 		await writeFile(join(files.fonts, 'OpenSans-Regular.ttf'), regular);

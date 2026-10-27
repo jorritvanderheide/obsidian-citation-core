@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { keyOf, renameInAlias } from '../src/core/citations';
-import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs } from '../src/core/document';
+import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences } from '../src/core/document';
 import { footnotes } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
 
@@ -360,5 +360,63 @@ describe.skipIf(!installed())('a note, end to end', () => {
 		expect(exported).not.toContain(bib);
 		expect(exported).toMatch(/^## References/m);
 		expect(exported).toContain('As shown (A 2024) and (A 2024).');
+	});
+});
+
+const postReferences = join(process.cwd(), 'pandoc', 'post-references.lua');
+
+/** A note's body, as a post, with In the Open's arguments: the text, and the references apart. */
+function post(format: 'markdown' | 'html', input: string): { text: string; references: string | null } {
+	const output = join(dir, `post.${format}`);
+	const references = join(dir, 'references.json');
+	rmSync(references, { force: true });
+	const withDoi = join(dir, 'doi.bib');
+	writeFileSync(withDoi, '@book{a,\n  author = {A, Ann},\n  title = {First Things},\n  publisher = {Brill},\n  year = {2024},\n  doi = {10.1163/example}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  journal = {Notes},\n  year = {2025},\n  url = {https://example.org/b}\n}\n@article{c,\n  author = {C, Cy},\n  title = {Third},\n  year = {2023}\n}\n');
+	const run = { obsidian, filter, postReferences, afterCiteproc, metadata, bibliography: withDoi, csl: null, hardLineBreaks: false, resourcePath: dir, references, output };
+	execFileSync('pandoc', postArgs(format, run), { input });
+	let written: string | null = null;
+	try {
+		written = readFileSync(references, 'utf8');
+	} catch {
+		written = null;
+	}
+	return { text: readFileSync(output, 'utf8'), references: written };
+}
+
+describe.skipIf(!installed())('a post', () => {
+	const note = 'As [[a#p. 12]] and [[b]] say, not [[c]] [^1].\n\n# A section\n\n[^1]: A note.\n';
+
+	it('as Markdown, links each citation to its entry, and takes the entries out, in order', () => {
+		const { text, references } = post('markdown', note);
+		expect(text).toContain('As ([A 2024, 12](#ref-a)) and ([B 2025](#ref-b)) say, not ([C 2023](#ref-c))');
+		expect(text).toContain('## A section');
+		expect(text).toContain('[^1]: A note.');
+		expect(text).not.toContain('First Things');
+		expect(readReferences(references ?? '')).toEqual([
+			{ key: 'a', text: 'A, Ann. 2024. *First Things*. Brill. <https://doi.org/10.1163/example>.', url: 'https://doi.org/10.1163/example' },
+			{ key: 'b', text: 'B, Bob. 2025. “Second.” *Notes*. <https://example.org/b>.', url: 'https://example.org/b' },
+			{ key: 'c', text: 'C, Cy. 2023. “Third.”', url: null },
+		]);
+	});
+
+	it('as Markdown without citations, has none to take out', () => {
+		const { text, references } = post('markdown', 'Just words.\n');
+		expect(text).toBe('Just words.\n');
+		expect(readReferences(references ?? '')).toEqual([]);
+	});
+
+	it('as HTML, is finished: citations as words, the reference list at the end, headed', () => {
+		writeFileSync(metadata, JSON.stringify({ 'reference-section-title': 'References' }));
+		try {
+			const { text, references } = post('html', note);
+			expect(text).toContain('As <span class="citation" data-cites="a">(A 2024, 12)</span> and');
+			expect(text).not.toContain('href="#ref-a"');
+			expect(text).toMatch(/<h2[^>]*>A section<\/h2>/);
+			expect(text).toMatch(/<h2[^>]*>References<\/h2>/);
+			expect(text).toContain('<em>First Things</em>');
+			expect(references).toBeNull();
+		} finally {
+			writeFileSync(metadata, '{}');
+		}
 	});
 });

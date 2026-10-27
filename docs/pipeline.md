@@ -68,3 +68,21 @@ switched off, because Obsidian doesn't have them.
 
 Pandoc's own markdown has to be the reader, because its CommonMark reader has
 no `[@key]` citations.
+
+## A post
+
+In the Open makes a note into a post for a website instead of a file: the
+same steps, with `post` in `prepare`'s options, so its metadata is a post's
+(`postMetadata`). What leaves with it from the frontmatter is `POST_KEYS`
+(`postProperties`), not `DOCUMENT_KEYS`. `postArgs` reads the note the same
+way, moves every heading a level down, as the site shows the title as the
+page's one level 1 heading, and makes one of two things:
+
+- **Markdown**, GitHub's without raw HTML, for a site that takes the
+  references extension. With `link-citations`, each citation links to its
+  entry, `#ref-<key>`, and `pandoc/post-references.lua` takes the entries out
+  of the text into a file of their own, as JSON (`readReferences`). It runs
+  after `--citeproc` and before `after-citeproc.lua`, which clears the
+  bibliography it reads the works' DOIs from.
+- **HTML**, finished, for any other site: citations as words, and the
+  reference list at the end, under its heading.

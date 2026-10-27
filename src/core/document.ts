@@ -275,3 +275,134 @@ export function inputFiles(dump: string): string[] {
 		.map((line) => line.trim())
 		.filter((line) => line !== '' && line !== '-');
 }
+
+// A post for a website, which In the Open sends over Micropub: the same note,
+// read the same way, made into a post instead of a file.
+
+/**
+ * What a post is sent as. Markdown to a site that takes the references
+ * extension, with the reference list apart; HTML, finished, to any other,
+ * with the reference list at its end.
+ */
+export type Post = 'markdown' | 'html';
+
+/**
+ * The frontmatter keys a post takes, and the only ones that leave with it:
+ * what the site shows about it besides its text. Not `DOCUMENT_KEYS`, which
+ * are what a document file holds.
+ */
+export const POST_KEYS = ['summary', 'categories', 'slug'] as const;
+
+export interface PostProperties {
+	summary: string | null;
+	categories: string[];
+	slug: string | null;
+}
+
+/** The note's properties a post takes, from `POST_KEYS`. Anything else in the frontmatter stays in the vault. */
+export function postProperties(frontmatter: unknown): PostProperties {
+	const properties = frontmatter !== null && typeof frontmatter === 'object' ? (frontmatter as Record<string, unknown>) : {};
+	const text = (value: unknown) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : null);
+	const categories = properties.categories;
+	return {
+		summary: text(properties.summary),
+		categories: (Array.isArray(categories) ? categories : typeof categories === 'string' ? [categories] : [])
+			.filter((each): each is string => typeof each === 'string' && each.trim() !== '')
+			.map((each) => each.trim()),
+		slug: text(properties.slug),
+	};
+}
+
+/**
+ * A post's metadata for pandoc: its title, as `documentMetadata` finds it, and
+ * the language, which citeproc writes the references in. As HTML, the heading
+ * of the reference list at its end too; as Markdown there is no list in the
+ * text to head, as the site gets it apart.
+ */
+export function postMetadata(frontmatter: unknown, heading: string | null, name: string, noteStyle: boolean, post: Post): Record<string, unknown> {
+	const document = documentMetadata(frontmatter, heading, name, noteStyle);
+	const metadata: Record<string, unknown> = { title: document.title };
+	if (document.lang !== undefined) metadata.lang = document.lang;
+	if (post === 'html') metadata['reference-section-title'] = document['reference-section-title'];
+	return metadata;
+}
+
+export interface PostRun {
+	/** The filter for Obsidian's syntax that is not about citations, on disk. */
+	obsidian: string;
+	/** The citation filter, on disk. */
+	filter: string;
+	/** The filter that takes the reference list out of a Markdown post, on disk. */
+	postReferences: string;
+	/** The filter that clears the bibliography's and the style's paths after citeproc, on disk. */
+	afterCiteproc: string;
+	/** The post's metadata, from `postMetadata`, as JSON on disk. */
+	metadata: string;
+	/** The bibliography, on disk, or null to post without citations. */
+	bibliography: string | null;
+	/** A `.csl` file, or null for pandoc's built-in style. */
+	csl: string | null;
+	/** Where pandoc looks for images, joined with the platform's delimiter. */
+	resourcePath: string;
+	/** Whether one newline is a line break, from `lineBreaks`. */
+	hardLineBreaks: boolean;
+	/** Where the Markdown post's references go, as JSON, for `readReferences`. */
+	references: string;
+	output: string;
+}
+
+/**
+ * Pandoc's arguments for a post. The note is read as for a document, from
+ * stdin, and so are its citations; then:
+ *
+ * - Every heading a level down, as in Markdown export: the site shows the
+ *   title as the page's one level 1 heading, and the post's start at 2.
+ * - Markdown is GitHub's, which has footnotes, tables and strikethrough, and
+ *   no raw HTML: a site that takes Markdown renders it its own way. Each
+ *   citation links to its entry, `#ref-<key>`, and `post-references.lua`
+ *   takes the entries out, into `references`, before `after-citeproc.lua`
+ *   clears the bibliography it reads their DOIs from.
+ * - HTML is finished for any site: citations as words, the reference list at
+ *   the end, headed.
+ * - Neither wraps lines: a site reflows the text itself.
+ */
+export function postArgs(post: Post, run: PostRun): string[] {
+	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
+	const args = [
+		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header`,
+		`--metadata-file=${run.metadata}`,
+		`--lua-filter=${run.obsidian}`,
+		`--lua-filter=${run.filter}`,
+	];
+	if (run.bibliography) args.push(`--bibliography=${run.bibliography}`);
+	args.push(`--resource-path=${run.resourcePath}`, '--shift-heading-level-by=1', '--wrap=none', '--citeproc');
+	if (post === 'markdown') {
+		args.push('--to=gfm-raw_html', '--metadata=link-citations=true', `--metadata=references-out=${run.references}`, `--lua-filter=${run.postReferences}`);
+	} else {
+		args.push('--to=html');
+	}
+	args.push(`--lua-filter=${run.afterCiteproc}`);
+	if (run.csl) args.push(`--csl=${run.csl}`);
+	args.push(`--output=${run.output}`);
+	return args;
+}
+
+/** A work a Markdown post cites, as `post-references.lua` writes it. */
+export interface Reference {
+	key: string;
+	/** Its formatted reference: inline CommonMark, emphasis and links. */
+	text: string;
+	/** Its DOI as a link, or its URL, or null. */
+	url: string | null;
+}
+
+/** The references `post-references.lua` wrote, in the order of the reference list. */
+export function readReferences(json: string): Reference[] {
+	const entries: unknown = JSON.parse(json);
+	if (!Array.isArray(entries)) throw new Error('The references are not a list.');
+	return entries.map((entry: unknown) => {
+		const { key, text, url } = (entry ?? {}) as Record<string, unknown>;
+		if (typeof key !== 'string' || typeof text !== 'string') throw new Error('A reference has no key or text.');
+		return { key, text, url: typeof url === 'string' ? url : null };
+	});
+}
