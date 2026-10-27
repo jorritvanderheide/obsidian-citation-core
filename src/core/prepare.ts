@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -35,6 +35,12 @@ export interface Options {
 	noteStyle: boolean;
 	/** A post for a website, as Markdown or HTML, rather than a document: its metadata is a post's (`postMetadata`). */
 	post?: Post;
+	/**
+	 * For a post, the address of a linked note's own post, or null for a note
+	 * that isn't one: a link to a note with a post goes to the post
+	 * (`linkPosts`), and one without is listed in `missing.unpublished`.
+	 */
+	postOf?: (linkpath: string) => string | null;
 }
 
 export interface Prepared {
@@ -54,6 +60,12 @@ export interface Missing {
 	 * its key before it has a note, or a note not written yet.
 	 */
 	unresolved: string[];
+	/**
+	 * For a post, links to notes of your own that have no post, which go out
+	 * as their words: link targets as written, each once. Always empty for a
+	 * document.
+	 */
+	unpublished: string[];
 }
 
 /**
@@ -93,9 +105,11 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	const missing = {
 		papers: check(({ linkpath }) => keyFor(linkpath)),
 		unresolved: check(({ target, linkpath }) => (linkpath !== '' && vault.resolve(linkpath) === null ? keyOf(target) : null)),
+		unpublished: options.postOf ? unpublished(targets, resolve, keyFor, options.postOf) : [],
 	};
 
-	const { title, body: lifted } = liftHeadings(citeByKey(footnotes(prose), propertyOf));
+	const cited = citeByKey(footnotes(prose), propertyOf);
+	const { title, body: lifted } = liftHeadings(options.postOf ? linkPosts(cited, options.postOf) : cited);
 	// Forward slashes, which pandoc reads on every platform.
 	const markdown = imageEmbeds(lifted, (linkpath) => vault.resolve(linkpath)?.file.replace(/\\/g, '/') ?? null);
 	const frontmatter = yaml === null ? null : vault.parseYaml(yaml);
@@ -103,4 +117,24 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 		? postMetadata(frontmatter, title, options.name, options.noteStyle, options.post)
 		: documentMetadata(frontmatter, title, options.name, options.noteStyle);
 	return { markdown, metadata, missing };
+}
+
+/**
+ * The links of a post to notes of your own without a post: not a paper, which
+ * is a citation, and not a file, such as a PDF, which is no note. Each target
+ * once, as written, in the order of the note.
+ */
+function unpublished(
+	targets: { target: string; linkpath: string }[],
+	resolve: (linkpath: string) => Linked | null,
+	keyFor: (linkpath: string) => string | null,
+	postOf: (linkpath: string) => string | null,
+): string[] {
+	const found: string[] = [];
+	for (const { target, linkpath } of targets) {
+		const linked = resolve(linkpath);
+		if (linked === null || !linked.path.endsWith('.md') || keyFor(linkpath) !== null || postOf(linkpath) !== null) continue;
+		if (!found.includes(target)) found.push(target);
+	}
+	return found;
 }

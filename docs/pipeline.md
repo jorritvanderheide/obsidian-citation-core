@@ -74,7 +74,11 @@ no `[@key]` citations.
 In the Open makes a note into a post for a website instead of a file: the
 same steps, with `post` in `prepare`'s options, so its metadata is a post's
 (`postMetadata`). What leaves with it from the frontmatter is `POST_KEYS`
-(`postProperties`), not `DOCUMENT_KEYS`. `postArgs` reads the note the same
+(`postProperties`), not `DOCUMENT_KEYS`. With `postOf`, which says which notes
+are posts themselves, a link to one goes to its post (`linkPosts`, after
+`citeByKey`), and a link to a note of your own without one is listed in
+`missing.unpublished`, from the note as written, as the other checks are.
+`postArgs` reads the note the same
 way, moves every heading a level down, as the site shows the title as the
 page's one level 1 heading, and makes one of two things:
 

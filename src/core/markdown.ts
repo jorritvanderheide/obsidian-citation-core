@@ -411,6 +411,28 @@ export function citeByKey(text: string, keyFor: (linkpath: string) => string | n
 	);
 }
 
+/**
+ * Every link to a note that is a post on a website, as a link to that post: a
+ * post In the Open sends links to the posts it links to. `urlFor` gives a
+ * note's post's address, or null for a note that isn't one, whose link is left
+ * as written, so the filter makes it its words. The link's words are its alias,
+ * or the note's name, as Obsidian shows it; a heading in it is the note's, so
+ * the link goes to the post.
+ */
+export function linkPosts(text: string, urlFor: (linkpath: string) => string | null): string {
+	return outsideCode(text, (prose) =>
+		prose.replace(LINK, (link: string, target: string, alias?: string) => {
+			const linkpath = linkpathOf(target).trim();
+			if (linkpath === '') return link;
+			const url = urlFor(linkpath);
+			if (url === null) return link;
+			const name = linkpath.slice(linkpath.lastIndexOf('/') + 1).replace(/\.md$/, '');
+			const words = (alias ?? name).trim() || name;
+			return `[${words.replace(/[[\]\\]/g, '\\$&')}](<${url}>)`;
+		}),
+	);
+}
+
 const WIKILINK = /(?<!!)\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
 
 /** Every wikilink target outside code, as written. Embeds are not links. */

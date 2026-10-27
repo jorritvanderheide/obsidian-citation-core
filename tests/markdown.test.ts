@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, footnotes, imageEmbeds, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -335,5 +335,17 @@ describe('citeByKey', () => {
 	it('leaves links without a key, embeds and code as written', () => {
 		const text = '[[My idea|this idea]] ![[oldkey]] `[[oldkey]]`';
 		expect(citeByKey(text, keyFor)).toBe(text);
+	});
+});
+
+describe('linkPosts', () => {
+	const urlFor = (linkpath: string) => (linkpath === 'Notes/My idea' || linkpath === 'My idea' ? 'https://bw20.nl/log/my-idea/' : null);
+	it('links a note with a post to the post, by its alias or its name', () => {
+		expect(linkPosts('[[My idea]], [[Notes/My idea|that [idea]], [[My idea#Why]]', urlFor)).toBe(
+			'[My idea](<https://bw20.nl/log/my-idea/>), [that \\[idea](<https://bw20.nl/log/my-idea/>), [My idea](<https://bw20.nl/log/my-idea/>)',
+		);
+	});
+	it('leaves every other link, embed and code as written', () => {
+		expect(linkPosts('[[Other]] ![[My idea]] `[[My idea]]` [[#Heading]]', urlFor)).toBe('[[Other]] ![[My idea]] `[[My idea]]` [[#Heading]]');
 	});
 });
