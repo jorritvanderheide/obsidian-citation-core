@@ -16,6 +16,9 @@ import { MARKDOWN_TEMPLATE } from './core/document';
 /** A failure already written as a sentence for the person reading it. */
 export class ExportError extends Error {}
 
+/** Where pandoc's path is set, when the plugin doesn't say. */
+const SETTINGS = "the plugin's settings";
+
 /**
  * Call `use` with the filters, the Markdown template, the PDF's font and the
  * document's metadata on disk, and clean up afterwards.
@@ -59,19 +62,26 @@ export async function withFiles<T>(
 	}
 }
 
-/** What pandoc makes of arguments: where it would write, then what it would read, from `--dump-args`. */
-export function dumpArgs(executable: string, args: string[], cwd: string): Promise<string> {
+/**
+ * What pandoc makes of arguments: where it would write, then what it would
+ * read, from `--dump-args`. `settings` says where pandoc's path is set, in the
+ * plugin that runs it, for the message when it isn't there.
+ */
+export function dumpArgs(executable: string, args: string[], cwd: string, settings = SETTINGS): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile(executable, ['--dump-args', ...args], { cwd }, (error: (Error & { code?: unknown }) | null, stdout: string, stderr: string) => {
 			if (error === null) resolve(stdout);
-			else if (error.code === 'ENOENT') reject(new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in the Due Credit settings.`));
+			else if (error.code === 'ENOENT') reject(new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`));
 			else reject(new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim() || error.message}`));
 		});
 	});
 }
 
-/** Run pandoc with `input` on stdin. Resolves to what it warned about, if anything. */
-export function run(executable: string, args: string[], input: string, cwd: string): Promise<string> {
+/**
+ * Run pandoc with `input` on stdin. Resolves to what it warned about, if
+ * anything. `settings` as for `dumpArgs`.
+ */
+export function run(executable: string, args: string[], input: string, cwd: string, settings = SETTINGS): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(executable, args, { cwd });
 		let stderr = '';
@@ -82,7 +92,7 @@ export function run(executable: string, args: string[], input: string, cwd: stri
 		child.on('error', (error: NodeJS.ErrnoException) => {
 			reject(
 				error.code === 'ENOENT'
-					? new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in the Due Credit settings.`)
+					? new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`)
 					: error,
 			);
 		});
