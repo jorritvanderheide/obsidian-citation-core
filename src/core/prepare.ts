@@ -84,7 +84,7 @@ export interface Missing {
  * it to the note itself.
  *
  * The bibliography decides what is a citation, not whether a paper has a note,
- * so the check lists a link to no note at all as well: Paper Trail links a
+ * so the check lists a link to no note at all as well: Insert citation links a
  * paper that has no note by its key. Only a link to a note of your own is
  * never listed.
  */

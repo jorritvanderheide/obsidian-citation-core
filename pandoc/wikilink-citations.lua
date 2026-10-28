@@ -1,6 +1,6 @@
 --- Turn Obsidian wikilinks into pandoc citations.
 ---
---- Paper Trail writes a citation as `[[citekey]]` rather than `[@citekey]`.
+--- Due Credit writes a citation as `[[citekey]]` rather than `[@citekey]`.
 --- That is a link, so inside the vault it resolves, opens the paper, previews
 --- it on hover, and puts every use of a source into that source's backlinks,
 --- which is the question a thesis asks of its own corpus. Outside the vault it
@@ -9,13 +9,14 @@
 --- - A page after `#`: `[[key#p. 12]]` cites page 12, as `[@key, p. 12]`
 ---   would. Obsidian shows it as "key > p. 12" and it is still a link to the
 ---   paper, so it stays in the backlinks.
---- - Or everything in the alias, around the key, the way Paper Trail writes a
----   citation from Better BibTeX's dialog: `[[a|see a, p. 4, emphasis added]]`
----   is `[see @a, p. 4, emphasis added]`. A `-` against the key leaves the
+--- - Or everything in the alias, around the key, the way pandoc writes it
+---   around `@key`: `[[a|see a, p. 4, emphasis added]]` is
+---   `[see @a, p. 4, emphasis added]`. A `-` against the key leaves the
 ---   author out, for a sentence that names them already: `[[a|-a, p. 4]]` is
 ---   `[-@a, p. 4]`.
 --- - Or a page after the first comma of an alias that does not repeat the key,
----   the way Paper Trail adds one to a label you wrote: `[[a|Marsh, p. 4]]`.
+---   the way Add page to citation adds one to a label you wrote:
+---   `[[a|Marsh, p. 4]]`.
 --- - Neighbouring citations share brackets: `[[a#p. 12]]; [[b#p. 3]]` is
 ---   "(A 2024, 12; B 2025, 3)", as `[@a, p. 12; @b, p. 3]` would be.
 ---
@@ -115,10 +116,10 @@ end
 --- one: `[[key#p. 12]]` cites page 12, `[[key#Claim]]` is just the paper's
 --- Claim heading, and `[[key|Smith, Jones]]` is just a label.
 ---
---- Every abbreviation Better BibTeX writes is here, since Paper Trail writes
---- them into labels, with the plurals and the full words someone might type.
---- Paper Trail reads labels by the same words, as `LOCATOR_TERMS` in its
---- `src/core/zotero.ts`: a change here is a change there.
+--- Every abbreviation Better BibTeX writes is here, with the plurals and the
+--- full words someone might type. Add page to citation reads labels by the
+--- same words, as `LOCATOR_TERMS` in `src/core/writing.ts`, and
+--- `tests/writing.test.ts` holds the two to one list.
 local LOCATOR_TERMS = {}
 for term in ([[
   p. pp. page pages
@@ -160,9 +161,9 @@ end
 --- The prefix and suffix an alias spells out around the key, or nil when it
 --- spells none.
 ---
---- Paper Trail writes a citation from Better BibTeX's dialog as the key with
---- everything else around it in the alias: `[[a|see a, p. 4, emphasis added]]`
---- is `[see @a, p. 4, emphasis added]`. Text before the key is the prefix and
+--- A citation can have everything around the key in its alias, as pandoc
+--- writes it around `@key`: `[[a|see a, p. 4, emphasis added]]` is
+--- `[see @a, p. 4, emphasis added]`. Text before the key is the prefix and
 --- text after it the suffix, where citeproc finds the page just as it does in
 --- pandoc's own syntax. Only an alias that repeats the key as a word counts:
 --- any other is what Obsidian shows, and nothing more.
