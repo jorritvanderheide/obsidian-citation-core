@@ -4,8 +4,9 @@
 
 The part of [Due Credit](https://codeberg.org/BW20/obsidian-due-credit) that
 another plugin can use too: every decision about reading a note, what is a
-citation, and what pandoc is asked to make. It has no Obsidian UI and no
-settings. A plugin bundles it into its own `main.js` and wires it to Obsidian.
+citation and how one is written, the works a `.bib` holds, and what pandoc is
+asked to make. It has no Obsidian UI and no settings. A plugin bundles it into
+its own `main.js` and wires it to Obsidian.
 
 ## What's here
 
