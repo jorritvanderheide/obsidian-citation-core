@@ -8,7 +8,7 @@
 	"types": "src/index.ts",
 	"scripts": {
 		"typecheck": "tsc -noEmit -skipLibCheck",
-		"lint": "eslint .",
+		"lint": "eslint . --max-warnings 0",
 		"test": "vitest run --passWithNoTests"
 	},
 	"author": "Jorrit van der Heide",

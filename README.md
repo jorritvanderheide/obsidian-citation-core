@@ -80,7 +80,7 @@ The plugin bundles the source, so its esbuild needs `'.lua': 'text'` and
 nix develop     # Node.js, the pandoc the tests expect, and the built-in one (Linux)
 npm install
 npm run typecheck
-npm run lint
+npm run lint    # any warning fails it
 npm test        # the filter tests need pandoc on the PATH
 nix flake check # all three, then the tests again on the built-in pandoc
 ```
