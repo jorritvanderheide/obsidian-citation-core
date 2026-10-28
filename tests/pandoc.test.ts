@@ -3,7 +3,7 @@ import { execFileSync } from 'child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences } from '../src/core/document';
 import { footnotes } from '../src/core/markdown';
@@ -30,6 +30,11 @@ writeFileSync(metadata, '{}');
 const bib = join(dir, 'library.bib');
 writeFileSync(bib, '@article{a,\n  author = {A, Ann},\n  title = {First},\n  year = {2024}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  year = {2025}\n}\n');
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+// Every test here runs pandoc synchronously, a second at a time on the built-in
+// one, which keeps vitest's worker from answering vitest for minutes on end.
+// A turn of the event loop before each test lets it.
+beforeEach(() => new Promise((resolve) => setImmediate(resolve)));
 
 /** The body of a one-paragraph note, cited and rendered to plain text. */
 function cite(markdown: string): string {
@@ -160,7 +165,7 @@ function markdown(input: string): string {
 
 describe.skipIf(!installed())('obsidian.lua', () => {
 	it('exports a callout as a quote under its title in bold', () => {
-		expect(markdown('> [!note]- My *title*\n> Body [[a]].\n')).toBe('> **My *title***\\\n> Body (A 2024).\n\nA, Ann. 2024. "First."\n');
+		expect(markdown('> [!note]- My *title*\n> Body [[a]].\n')).toBe('> **My *title***\\\n> Body (A 2024).\n\nA, Ann. 2024. *First*.\n');
 	});
 
 	it('drops the marker of a callout without a title, and leaves a plain quote alone', () => {
@@ -231,7 +236,8 @@ describe.skipIf(!installed())('a Word template', () => {
 	});
 });
 
-describe.skipIf(!installed() || !installed('xelatex'))('a PDF', () => {
+// The built-in pandoc runs no PDF engine (`scripts/pandoc-wasm.mjs`).
+describe.skipIf(!installed() || !installed('xelatex') || process.env.PANDOC_BUILT_IN === '1')('a PDF', () => {
 	/** The fonts a PDF embeds, which it names when uncompressed. */
 	const embedded = (extra: string[]) => {
 		const output = join(dir, 'set.pdf');
@@ -395,7 +401,7 @@ describe.skipIf(!installed())('a post', () => {
 		expect(readReferences(references ?? '')).toEqual([
 			{ key: 'a', text: 'A, Ann. 2024. *First Things*. Brill. <https://doi.org/10.1163/example>.', url: 'https://doi.org/10.1163/example' },
 			{ key: 'b', text: 'B, Bob. 2025. “Second.” *Notes*. <https://example.org/b>.', url: 'https://example.org/b' },
-			{ key: 'c', text: 'C, Cy. 2023. “Third.”', url: null },
+			{ key: 'c', text: 'C, Cy. 2023. *Third*.', url: null },
 		]);
 	});
 

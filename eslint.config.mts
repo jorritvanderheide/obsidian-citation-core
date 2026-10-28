@@ -11,7 +11,7 @@ export default defineConfig(
 			},
 			parserOptions: {
 				projectService: {
-					allowDefaultProject: ['eslint.config.mts'],
+					allowDefaultProject: ['eslint.config.mts', 'vitest.config.ts', 'scripts/pandoc-wasm.mjs'],
 				},
 				tsconfigRootDir: import.meta.dirname,
 			},

@@ -1,8 +1,10 @@
-// Running pandoc: the one program this plugin talks to.
+// Running pandoc: an installed one, or the built-in one, in the plugin.
 import { execFile, spawn } from 'child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
+import { closeSync, openSync } from 'fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import path, { delimiter, join } from 'path';
+import { WASI } from 'wasi';
 import afterCiteproc from '../pandoc/after-citeproc.lua';
 import obsidian from '../pandoc/obsidian.lua';
 import postReferences from '../pandoc/post-references.lua';
@@ -11,6 +13,7 @@ import bold from '../fonts/OpenSans-Bold.ttf';
 import boldItalic from '../fonts/OpenSans-BoldItalic.ttf';
 import italic from '../fonts/OpenSans-Italic.ttf';
 import regular from '../fonts/OpenSans-Regular.ttf';
+import { Mounts } from './core/built-in';
 import { MARKDOWN_TEMPLATE } from './core/document';
 
 /** A failure already written as a sentence for the person reading it. */
@@ -63,43 +66,124 @@ export async function withFiles<T>(
 }
 
 /**
- * What pandoc makes of arguments: where it would write, then what it would
- * read, from `--dump-args`. `settings` says where pandoc's path is set, in the
- * plugin that runs it, for the message when it isn't there.
+ * A pandoc to run: an installed one, or the built-in one (`builtInPandoc`).
+ * Arguments are built from paths as `see` gives them, and the resource path
+ * joined with `delimiter`, so the same arguments work for either.
  */
-export function dumpArgs(executable: string, args: string[], cwd: string, settings = SETTINGS): Promise<string> {
-	return new Promise((resolve, reject) => {
-		execFile(executable, ['--dump-args', ...args], { cwd }, (error: (Error & { code?: unknown }) | null, stdout: string, stderr: string) => {
-			if (error === null) resolve(stdout);
-			else if (error.code === 'ENOENT') reject(new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`));
-			else reject(new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim() || error.message}`));
-		});
-	});
+export interface Pandoc {
+	/** Whether this is the built-in pandoc, which runs no other program: no PDF engine and no `--filter`. */
+	readonly builtIn: boolean;
+	/** The path pandoc opens a file or folder on disk by. */
+	see(host: string): string;
+	/** What joins the folders of `--resource-path`. */
+	readonly delimiter: string;
+	/** Run pandoc with `input` on stdin. Resolves to what it warned about, if anything. */
+	run(args: string[], input: string): Promise<string>;
+	/** What pandoc makes of arguments: where it would write, then what it would read, from `--dump-args`. */
+	dumpArgs(args: string[]): Promise<string>;
 }
 
 /**
- * Run pandoc with `input` on stdin. Resolves to what it warned about, if
- * anything. `settings` as for `dumpArgs`.
+ * An installed pandoc, run in `cwd`, the vault. `settings` says where pandoc's
+ * path is set, in the plugin that runs it, for the message when it isn't there.
  */
-export function run(executable: string, args: string[], input: string, cwd: string, settings = SETTINGS): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const child = spawn(executable, args, { cwd });
-		let stderr = '';
-		child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-		// A pandoc that exits before reading all of stdin closes the pipe on us,
-		// and why it exited is in stderr, which `close` reports.
-		child.stdin.on('error', () => {});
-		child.on('error', (error: NodeJS.ErrnoException) => {
-			reject(
-				error.code === 'ENOENT'
-					? new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`)
-					: error,
-			);
-		});
-		child.on('close', (code) => {
-			if (code === 0) resolve(stderr.trim());
-			else reject(new ExportError(stderr.trim() || `Pandoc stopped with exit code ${code ?? 'unknown'}.`));
-		});
-		child.stdin.end(input);
-	});
+export function installedPandoc(executable: string, cwd: string, settings = SETTINGS): Pandoc {
+	const missing = () => new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`);
+	return {
+		builtIn: false,
+		see: (host) => host,
+		delimiter,
+		dumpArgs: (args) =>
+			new Promise((resolve, reject) => {
+				execFile(executable, ['--dump-args', ...args], { cwd }, (error: (Error & { code?: unknown }) | null, stdout: string, stderr: string) => {
+					if (error === null) resolve(stdout);
+					else if (error.code === 'ENOENT') reject(missing());
+					else reject(new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim() || error.message}`));
+				});
+			}),
+		run: (args, input) =>
+			new Promise((resolve, reject) => {
+				const child = spawn(executable, args, { cwd });
+				let stderr = '';
+				child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+				// A pandoc that exits before reading all of stdin closes the pipe on us,
+				// and why it exited is in stderr, which `close` reports.
+				child.stdin.on('error', () => {});
+				child.on('error', (error: NodeJS.ErrnoException) => reject(error.code === 'ENOENT' ? missing() : error));
+				child.on('close', (code) => {
+					if (code === 0) resolve(stderr.trim());
+					else reject(new ExportError(stderr.trim() || `Pandoc stopped with exit code ${code ?? 'unknown'}.`));
+				});
+				child.stdin.end(input);
+			}),
+	};
+}
+
+/**
+ * The built-in pandoc, `module` from `loadBuiltIn`, with `vault` as its `/`.
+ * It runs in the plugin, through WASI, and sees only the vault and the
+ * folders `see` gives it (`Mounts`), never the rest of the disk. It runs no
+ * other program, so a PDF engine or a `--filter` of yours stops it with
+ * pandoc's own message.
+ */
+export function builtInPandoc(module: WebAssembly.Module, vault: string): Pandoc {
+	const mounts = new Mounts(vault, path);
+	const once = (args: string[], input: string | null) => runWasi(module, mounts.preopens(), args, input);
+	return {
+		builtIn: true,
+		see: (host) => mounts.see(host),
+		// The built-in pandoc's paths are a Unix one's, on every platform.
+		delimiter: ':',
+		dumpArgs: async (args) => {
+			const { code, stdout, stderr } = await once(['--dump-args', ...args], null);
+			if (code !== 0) throw new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim()}`);
+			return stdout;
+		},
+		run: async (args, input) => {
+			const { code, stderr } = await once(args, input);
+			if (code !== 0) throw new ExportError(stderr.trim() || `Pandoc stopped with exit code ${code}.`);
+			return stderr.trim();
+		},
+	};
+}
+
+/**
+ * One run of `pandoc.wasm`. WASI takes stdin, stdout and stderr as files, so
+ * they go through a folder of their own, removed afterwards. The note is an
+ * input file there, `/.pandoc-io/note`, rather than stdin: pandoc closes
+ * stdin once it has read it, and the descriptor, closed under us, could be
+ * another file's by the time we close it. Given a file, pandoc leaves all
+ * three open for us to close. `input` null reads no note, for `--dump-args`.
+ */
+export async function runWasi(module: WebAssembly.Module, preopens: Record<string, string>, args: string[], input: string | null): Promise<{ code: number; stdout: string; stderr: string }> {
+	const dir = await mkdtemp(join(tmpdir(), 'obsidian-pandoc-'));
+	const files = { note: join(dir, 'note'), stdin: join(dir, 'stdin'), stdout: join(dir, 'stdout'), stderr: join(dir, 'stderr') };
+	try {
+		await writeFile(files.stdin, '');
+		if (input !== null) await writeFile(files.note, input);
+		const fds = { stdin: openSync(files.stdin, 'r'), stdout: openSync(files.stdout, 'w'), stderr: openSync(files.stderr, 'w') };
+		let code: number;
+		try {
+			const wasi = new WASI({
+				version: 'preview1',
+				args: ['pandoc', ...args, ...(input === null ? [] : ['/.pandoc-io/note'])],
+				env: {},
+				preopens: { ...preopens, '/.pandoc-io': dir },
+				...fds,
+				returnOnExit: true,
+			});
+			// Instantiated asynchronously: Obsidian's Chromium refuses to do it
+			// synchronously on the main thread for a module over 8 MB, which
+			// pandoc's is. Node allows it, so the tests can't tell.
+			const instance = await WebAssembly.instantiate(module, wasi.getImportObject() as WebAssembly.Imports);
+			code = wasi.start(instance);
+		} finally {
+			closeSync(fds.stdin);
+			closeSync(fds.stdout);
+			closeSync(fds.stderr);
+		}
+		return { code, stdout: await readFile(files.stdout, 'utf8'), stderr: await readFile(files.stderr, 'utf8') };
+	} finally {
+		await rm(dir, { recursive: true, force: true });
+	}
 }

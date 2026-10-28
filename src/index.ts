@@ -8,4 +8,6 @@ export * from './core/markdown';
 export * from './core/paths';
 export * from './core/prepare';
 export * from './core/writing';
+export * from './core/built-in';
 export * from './pandoc';
+export * from './wasm';

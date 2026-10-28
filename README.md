@@ -13,10 +13,12 @@ its own `main.js` and wires it to Obsidian.
 | Path | What it holds |
 | --- | --- |
 | `src/core/` | Every decision. Pure: no Obsidian imports except type-only ones, no filesystem. Every file has a test named after it. |
-| `src/pandoc.ts` | Running pandoc, and writing its files to a temporary folder. |
+| `src/pandoc.ts` | Running pandoc, an installed one or the built-in one, and writing its files to a temporary folder. |
+| `src/wasm.ts` | The built-in pandoc on disk: loading it, checked against its pinned hash, and downloading it. |
 | `src/index.ts` | Everything a plugin imports. |
 | `pandoc/` | The Lua filters. |
 | `fonts/` | Open Sans, for PDF. |
+| `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
 | `docs/pipeline.md` | Every step from a note to pandoc's input, in order. |
 
 How a link becomes a citation, form by form, is in Due Credit's
@@ -37,6 +39,28 @@ the same code:
   `flake.lock` names, so a release is built from the pinned core, not
   whatever is checked out.
 
+## The built-in pandoc
+
+Pandoc's own WebAssembly build, which a plugin runs in itself, for whoever
+has no pandoc installed or can't install one. `src/core/built-in.ts` pins it,
+pandoc 3.13 from pandoc's release, by the hash of the archive and of the file;
+`src/wasm.ts` downloads it once, when the person agrees, into the user's
+cache folder (`cacheFolder`), outside every vault, where the plugins that
+use it share it.
+
+- **Which pandoc runs** is the **Pandoc** setting's (`choosePandoc`): its
+  default, `pandoc`, is an installed one when the PATH has it and the
+  built-in one when it doesn't, and so is a blanked setting; anything
+  else is a pandoc of yours. `pandocFor` turns the setting into a `Pandoc`.
+- **What it sees** is the vault, as `/`, and each folder a file it needs is
+  in, under a name of its own (`Mounts`): nothing else on the disk. Paths
+  go through `Pandoc.see`, and a run's through `seen`, so the same arguments
+  work for either pandoc, on Windows too.
+- **What it can't do** is run another program: a PDF engine, or a
+  `--filter` of yours. Those need an installed pandoc.
+- It runs through Node's WASI, in the plugin, so it is desktop only, as the
+  plugins are.
+
 The plugin bundles the source, so its esbuild needs `'.lua': 'text'` and
 `'.ttf': 'binary'` loaders, and declarations for both as in
 [`src/modules.d.ts`](src/modules.d.ts).
@@ -44,19 +68,24 @@ The plugin bundles the source, so its esbuild needs `'.lua': 'text'` and
 ## Development
 
 ```sh
-nix develop     # Node.js and the pandoc the tests expect
+nix develop     # Node.js, the pandoc the tests expect, and the built-in one
 npm install
 npm run typecheck
 npm run lint
 npm test        # the filter tests need pandoc on the PATH
-nix flake check # all three, with nixpkgs' pandoc
+nix flake check # all three, then the tests again on the built-in pandoc
 ```
 
 `tests/pandoc.test.ts` runs the filters and the pipeline through a real pandoc,
 and skips what it can't run: everything without pandoc, and the PDF tests
-without xelatex. Citeproc's output changes between pandoc versions, so the
-expected results are for one: 3.7.0.2, the one in this flake's nixpkgs and
-the one Due Credit's CI pins. Move both together.
+without xelatex. `tests/wasm.test.ts` runs the built-in pandoc as a plugin
+does, from `PANDOC_WASM`, which `nix develop` sets. `nix flake check` runs the
+whole suite twice: on the pinned pandoc, and on the built-in one as `pandoc`
+(`scripts/pandoc-wasm.mjs`), which skips the PDF tests, since it runs no PDF
+engine. Citeproc's output changes between pandoc versions, so the
+expected results are for one: 3.13, the built-in pandoc's version, which
+this flake pins as pandoc's own static build. Move them together, the hashes
+in `src/core/built-in.ts` too.
 
 ### The conformance check
 
@@ -77,4 +106,6 @@ the normal test run, because it needs notes.
 
 Copyright © 2026 Jorrit van der Heide. Licensed under the [EUPL-1.2](LICENSE).
 Open Sans, in [`fonts/`](fonts), is under the
-[SIL Open Font License 1.1](fonts/OFL.txt).
+[SIL Open Font License 1.1](fonts/OFL.txt). The built-in pandoc isn't part of
+this repository or of a plugin's `main.js`: a plugin downloads it from
+pandoc's release, under pandoc's own license, the GPL-2.0-or-later.
