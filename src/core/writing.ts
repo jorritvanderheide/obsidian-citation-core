@@ -1,12 +1,13 @@
 // Writing a citation, in the forms the filter reads.
 //
-// Due Credit's Insert citation and Add page to citation write these. The link
-// is to the paper: its note by name when it has one, so the link resolves in
-// the vault, opens the paper on hover, and lands in its backlinks; otherwise
-// the key itself, which cites just the same and resolves once the paper has a
-// note named for it. A page goes in the label, around the name the way pandoc
-// writes it around the key: `[[a|a, p. 4]]` is `[@a, p. 4]`. Not after `#`:
-// Obsidian takes `[[a#p. 4]]` for a heading.
+// Due Credit's Insert citation, Add page to citation and Toggle author in
+// citation write these. The link is to the paper: its note by name when it
+// has one, so the link resolves in the vault, opens the paper on hover, and
+// lands in its backlinks; otherwise the key itself, which cites just the same
+// and resolves once the paper has a note named for it. A page goes in the
+// label, around the name the way pandoc writes it around the key:
+// `[[a|a, p. 4]]` is `[@a, p. 4]`, and `[[a|-a, p. 4]]` is `[-@a, p. 4]`. Not
+// after `#`: Obsidian takes `[[a#p. 4]]` for a heading.
 
 /**
  * Every word that starts a locator: Better BibTeX's abbreviations, their
@@ -124,4 +125,34 @@ export function withPage(link: LinkSpan, typed: string): string {
 	const comma = label.indexOf(',');
 	const own = comma !== -1 && isLocator(label.slice(comma + 1)) ? label.slice(0, comma) : label;
 	return `[[${target}|${own.trim()}, ${at}]]`;
+}
+
+/**
+ * The link with the author left out, or named again when it was: a `-`
+ * against the name in its label, as `[-@a]` is in pandoc, for a sentence that
+ * names the author already.
+ *
+ * A label that repeats the name keeps everything around it: `[[a|see a, p.
+ * 4]]` becomes `see -a, p. 4`. Any other label is only what Obsidian shows,
+ * and the filter reads nothing in it but a page, so it becomes the name, with
+ * that page: `[[a|Marsh, p. 4]]` becomes `-a, p. 4`. A page after `#` moves
+ * into the label, as it does for Add page to citation. Named again with
+ * nothing else in the label, the link is just `[[a]]`.
+ */
+export function toggleAuthor(link: LinkSpan): string {
+	const target = link.target.replace(/#.*$/, '').trim();
+	const name = linkName(link);
+	const heading = /#(.*)$/.exec(link.target)?.[1]?.trim() ?? '';
+	let label = link.label ?? (isLocator(heading) ? `${name}, ${heading}` : name);
+
+	const end = pastName(label, name);
+	if (end === -1) {
+		const comma = label.indexOf(',');
+		const page = comma !== -1 && isLocator(label.slice(comma + 1)) ? label.slice(comma) : '';
+		label = `-${name}${page}`;
+	} else {
+		const start = end - name.length;
+		label = label[start - 1] === '-' ? label.slice(0, start - 1) + label.slice(start) : `${label.slice(0, start)}-${label.slice(start)}`;
+	}
+	return label === name ? `[[${target}]]` : `[[${target}|${label}]]`;
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { citationLink, isLocator, LOCATOR_TERMS, linkAt, linkName, typedLocator, withPage } from '../src/core/writing';
+import { citationLink, isLocator, LOCATOR_TERMS, linkAt, linkName, toggleAuthor, typedLocator, withPage } from '../src/core/writing';
 
 describe('LOCATOR_TERMS', () => {
 	it('is the filter’s list, word for word', () => {
@@ -109,5 +109,39 @@ describe('withPage', () => {
 
 	it('keeps a folder in the target but not in the label', () => {
 		expect(withPage(at('[[Literature/a]]'), '4')).toBe('[[Literature/a|a, p. 4]]');
+	});
+});
+
+describe('toggleAuthor', () => {
+	const toggled = (text: string) => toggleAuthor(linkAt(text, 2)!);
+
+	it('leaves the author out, and names them again', () => {
+		expect(toggled('[[a]]')).toBe('[[a|-a]]');
+		expect(toggled('[[a|-a]]')).toBe('[[a]]');
+	});
+
+	it('keeps the page, and everything around the name', () => {
+		expect(toggled('[[a|a, p. 4]]')).toBe('[[a|-a, p. 4]]');
+		expect(toggled('[[a|-a, p. 4]]')).toBe('[[a|a, p. 4]]');
+		expect(toggled('[[a|see a, p. 4, emphasis added]]')).toBe('[[a|see -a, p. 4, emphasis added]]');
+		expect(toggled('[[a|see -a, p. 4, emphasis added]]')).toBe('[[a|see a, p. 4, emphasis added]]');
+	});
+
+	it('moves a page after # into the label', () => {
+		expect(toggled('[[a#p. 12]]')).toBe('[[a|-a, p. 12]]');
+		expect(toggled('[[a#Claim]]')).toBe('[[a|-a]]');
+	});
+
+	it('makes a label of your own the name, with its page', () => {
+		expect(toggled('[[a|Marsh, p. 4]]')).toBe('[[a|-a, p. 4]]');
+		expect(toggled('[[a|Marsh]]')).toBe('[[a|-a]]');
+	});
+
+	it('keeps a folder in the target but not in the label', () => {
+		expect(toggled('[[Literature/a]]')).toBe('[[Literature/a|-a]]');
+	});
+
+	it('does not take a word that only starts with the name for it', () => {
+		expect(toggled('[[a|about]]')).toBe('[[a|-a]]');
 	});
 });
