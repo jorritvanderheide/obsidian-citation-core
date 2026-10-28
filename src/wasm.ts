@@ -40,6 +40,9 @@ export async function loadBuiltIn(folder = builtInFolder()): Promise<WebAssembly
 	return module;
 }
 
+/** What to say when the download doesn't match its pinned hashes. */
+const MISMATCH = "The pandoc download didn't match the version this plugin was tested with, so it wasn't used. Try again later, or install pandoc yourself.";
+
 /**
  * Download the built-in pandoc from pandoc's release, check the archive and
  * the file in it against their pinned hashes, and keep it. `fetch` is the
@@ -47,10 +50,10 @@ export async function loadBuiltIn(folder = builtInFolder()): Promise<WebAssembly
  */
 export async function downloadBuiltIn(fetch: (url: string) => Promise<ArrayBuffer>, folder = builtInFolder()): Promise<WebAssembly.Module> {
 	const zip = new Uint8Array(await fetch(BUILT_IN.url));
-	if (sha256(zip) !== BUILT_IN.zipSha256) throw new ExportError(`The built-in pandoc from ${BUILT_IN.url} isn't the one this plugin was tested with, so it wasn't kept. Try again later, or install pandoc.`);
+	if (sha256(zip) !== BUILT_IN.zipSha256) throw new ExportError(MISMATCH);
 	const entry = zipEntry(zip, BUILT_IN.entry);
 	const bytes = new Uint8Array(entry.method === 8 ? inflateRawSync(entry.data) : entry.data);
-	if (sha256(bytes) !== BUILT_IN.sha256) throw new ExportError(`The built-in pandoc from ${BUILT_IN.url} isn't the one this plugin was tested with, so it wasn't kept. Try again later, or install pandoc.`);
+	if (sha256(bytes) !== BUILT_IN.sha256) throw new ExportError(MISMATCH);
 	await mkdir(folder, { recursive: true });
 	const file = join(folder, BUILT_IN.file);
 	// Written whole, then moved into place, so a half-written file is never run.

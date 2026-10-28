@@ -27,10 +27,10 @@ export type Choice = { kind: 'installed'; executable: string } | { kind: 'built-
 /**
  * Which pandoc the **Pandoc** setting asks for. The default, `pandoc`, is an
  * installed one when `onPath` finds it, and the built-in one when it
- * doesn't, so a stranger without pandoc can still export; empty, or only
- * spaces, is the default too, as a blanked address is. Anything else is an
- * address of yours, used as given, trimmed: when nothing is there, running
- * it says so, rather than quietly running another pandoc.
+ * doesn't, so someone without pandoc can still export. An empty setting, or
+ * one of only spaces, counts as the default too. Anything else is the path to
+ * your own pandoc, trimmed and used as given. When there's no pandoc there,
+ * running it says so, and no other pandoc quietly runs in its place.
  */
 export function choosePandoc(setting: string, onPath: (name: string) => string | null): Choice {
 	const value = setting.trim();
@@ -143,12 +143,12 @@ export function zipEntry(zip: Uint8Array, name: string): { method: number; data:
 			break;
 		}
 	}
-	if (end < 0) throw new Error('not a ZIP archive');
+	if (end < 0) throw new Error("the download isn't a ZIP file");
 	const count = view.getUint16(end + 10, true);
 	let at = view.getUint32(end + 16, true);
 	const decoder = new TextDecoder();
 	for (let n = 0; n < count; n++) {
-		if (view.getUint32(at, true) !== 0x02014b50) throw new Error('a damaged ZIP archive');
+		if (view.getUint32(at, true) !== 0x02014b50) throw new Error('the download is damaged');
 		const method = view.getUint16(at + 10, true);
 		const compressed = view.getUint32(at + 20, true);
 		const nameLength = view.getUint16(at + 28, true);
@@ -157,17 +157,17 @@ export function zipEntry(zip: Uint8Array, name: string): { method: number; data:
 		const local = view.getUint32(at + 42, true);
 		const entry = decoder.decode(zip.subarray(at + 46, at + 46 + nameLength));
 		if (entry === name) {
-			if (view.getUint32(local, true) !== 0x04034b50) throw new Error('a damaged ZIP archive');
+			if (view.getUint32(local, true) !== 0x04034b50) throw new Error('the download is damaged');
 			const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
 			return { method, data: zip.subarray(start, start + compressed) };
 		}
 		at += 46 + nameLength + extraLength + commentLength;
 	}
-	throw new Error(`${name} isn't in the archive`);
+	throw new Error(`the download has no ${name} in it`);
 }
 
 /**
- * Pandoc arguments of yours as pandoc sees them: each path `isPath` says is
+ * Your Pandoc arguments as pandoc sees them: each path `isPath` says is
  * one, alone or as an option's value (`--reference-doc=/home/ann/t.docx`),
  * through `see`. A plugin passes absolute paths to files that exist: a
  * relative one already means what it does to an installed pandoc, since the

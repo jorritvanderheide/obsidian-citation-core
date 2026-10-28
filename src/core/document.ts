@@ -242,12 +242,12 @@ export function splitArgs(value: string, home: string): string[] {
 // why, by the options that do it: long ones by name, short ones with or
 // without their value attached.
 const REFUSED: [string[], string][] = [
-	[['-o', '--output'], 'the save dialog decides where the export goes, and keeps it out of the vault'],
-	[['-f', '-r', '--from', '--read'], 'the note is read the way Obsidian writes it'],
-	[['-t', '-w', '--to', '--write'], 'the export command decides the format'],
-	[['-d', '--defaults'], 'a defaults file can change anything Due Credit decides'],
-	[['--extract-media', '--log'], 'it writes a file of its own, which could be in the vault'],
-	[['-h', '--help', '-v', '--version', '-D', '--print-default-template', '--print-default-data-file', '--print-highlight-style', '--list-input-formats', '--list-output-formats', '--list-extensions', '--list-highlight-languages', '--list-highlight-styles', '--dump-args', '--bash-completion'], 'it prints something and exports nothing'],
+	[['-o', '--output'], 'the save dialog picks where the file goes, and keeps it out of your vault'],
+	[['-f', '-r', '--from', '--read'], 'Due Credit reads the note the way Obsidian writes it'],
+	[['-t', '-w', '--to', '--write'], 'the export command you run picks the format'],
+	[['-d', '--defaults'], 'a defaults file could change everything Due Credit sets up, including where the file goes'],
+	[['--extract-media', '--log'], 'it writes a file of its own, and that file could end up in your vault'],
+	[['-h', '--help', '-v', '--version', '-D', '--print-default-template', '--print-default-data-file', '--print-highlight-style', '--list-input-formats', '--list-output-formats', '--list-extensions', '--list-highlight-languages', '--list-highlight-styles', '--dump-args', '--bash-completion'], "it only prints something, and doesn't export anything"],
 ];
 
 /** The first argument Due Credit will not pass on, and why, or null. */
@@ -397,13 +397,16 @@ export interface Reference {
 	url: string | null;
 }
 
+/** What to say when the file `post-references.lua` wrote isn't a list of references. */
+const MALFORMED = "The reference list from pandoc isn't in the shape it should be. This is a bug. Please open an issue.";
+
 /** The references `post-references.lua` wrote, in the order of the reference list. */
 export function readReferences(json: string): Reference[] {
 	const entries: unknown = JSON.parse(json);
-	if (!Array.isArray(entries)) throw new Error('The references are not a list.');
+	if (!Array.isArray(entries)) throw new Error(MALFORMED);
 	return entries.map((entry: unknown) => {
 		const { key, text, url } = (entry ?? {}) as Record<string, unknown>;
-		if (typeof key !== 'string' || typeof text !== 'string') throw new Error('A reference has no key or text.');
+		if (typeof key !== 'string' || typeof text !== 'string') throw new Error(MALFORMED);
 		return { key, text, url: typeof url === 'string' ? url : null };
 	});
 }

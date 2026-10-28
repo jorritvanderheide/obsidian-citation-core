@@ -9,12 +9,12 @@ new step goes there, in its place in the order.
    document's metadata, never pandoc's input.
 2. **Strip comments** (`stripComments`). `%%…%%` and `<!-- … -->`, across lines
    and past code, each closed only by its own marker. A comment left open runs
-   to the end of the note, the cautious reading.
+   to the end of the note, to be safe.
 3. **Strip block IDs** (`stripBlockIds`). `^abc123` at the end of a line, or on
    a line of its own.
 4. **Drop plugin blocks** (`dropPluginBlocks`). Fenced `dataview`,
-   `dataviewjs`, `tasks`, `query` and `base` blocks, which exported would only
-   be their query.
+   `dataviewjs`, `tasks`, `query` and `base` blocks, because an export would
+   show only their query.
 5. **Strip tags** (`stripTags`). A line of tags goes, line and all. A tag in a
    sentence stays as its word: `#project/alpha` is "project/alpha".
 6. **Check the citations** (`missingKeys`), on the note as written, before any
@@ -44,8 +44,8 @@ properties in `DOCUMENT_KEYS`.
   wrote, not what `citeByKey` made of it.
 - **Headings are promoted here, not with `--shift-heading-level-by`,** which
   would also demote the References heading citeproc adds afterwards. Markdown
-  output is the one place that's wanted: there the title is a heading on top,
-  and pandoc's shift moves everything else, References too, under it.
+  output is the exception. There the title is a heading at the top, and
+  pandoc's shift is what moves everything else under it, References included.
 
 ## Code is only characters
 
@@ -53,10 +53,11 @@ Every rewrite in `core/markdown.ts` goes through `segments`, and leaves fenced
 code blocks and backtick spans alone. A comment marker, tag or link inside code
 is text, and stays exactly as written.
 
-`segments` keeps comments from leaking, so where it disagrees with CommonMark
-about what is code, only one direction is a failure: text it takes for code,
-where a comment would be kept. The conformance check in
-the [README](../README.md#the-conformance-check) looks for exactly that.
+`segments` is there to keep comments from leaking. Where it disagrees with
+CommonMark about what is code, only one kind of mistake matters. That's text it
+treats as code when CommonMark doesn't, because a comment in it would be kept.
+The conformance check in the [README](../README.md#the-conformance-check) looks
+for exactly that.
 
 ## What pandoc is told
 
@@ -71,16 +72,19 @@ no `[@key]` citations.
 
 ## A post
 
-In the Open makes a note into a post for a website instead of a file: the
-same steps, with `post` in `prepare`'s options, so its metadata is a post's
-(`postMetadata`). What leaves with it from the frontmatter is `POST_KEYS`
-(`postProperties`), not `DOCUMENT_KEYS`. With `postOf`, which says which notes
-are posts themselves, a link to one goes to its post (`linkPosts`, after
-`citeByKey`), and a link to a note of your own without one is listed in
-`missing.unpublished`, from the note as written, as the other checks are.
-`postArgs` reads the note the same
-way, moves every heading a level down, as the site shows the title as the
-page's one level 1 heading, and makes one of two things:
+In the Open makes a note into a post for a website instead of a file. It runs
+the same steps, with `post` in `prepare`'s options, which makes the metadata a
+post's (`postMetadata`). The frontmatter keys that go along are `POST_KEYS`
+(`postProperties`), in place of `DOCUMENT_KEYS`.
+
+`postOf` says which notes are posts themselves. A link to one of them goes to
+its post (`linkPosts`, after `citeByKey`). A link to a note of your own that
+has no post is listed in `missing.unpublished`, which is read from the note as
+written, like the other checks.
+
+`postArgs` reads the note the same way. It moves every heading a level down,
+because the site shows the title as the page's one level 1 heading, and makes
+one of two things:
 
 - **Markdown**, GitHub's without raw HTML, for a site that takes the
   references extension. With `link-citations`, each citation links to its

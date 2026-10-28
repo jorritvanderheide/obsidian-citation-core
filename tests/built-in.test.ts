@@ -146,8 +146,8 @@ describe('zipEntry', () => {
 	});
 
 	it('says when a file is missing, or the bytes are no archive', () => {
-		expect(() => zipEntry(archive, 'pandoc.wasm')).toThrow("pandoc.wasm isn't in the archive");
-		expect(() => zipEntry(new Uint8Array(100), 'x')).toThrow('not a ZIP archive');
+		expect(() => zipEntry(archive, 'pandoc.wasm')).toThrow('the download has no pandoc.wasm in it');
+		expect(() => zipEntry(new Uint8Array(100), 'x')).toThrow("the download isn't a ZIP file");
 	});
 });
 

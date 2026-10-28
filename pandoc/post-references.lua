@@ -53,7 +53,7 @@ function Pandoc(doc)
   }
 
   local file = io.open(out, 'w')
-  if not file then error('post-references: could not write ' .. out) end
+  if not file then error("Couldn't write the post's reference list to a temporary file (" .. out .. "). Try again, and if it keeps happening, please open an issue.", 0) end
   -- An empty list as [], not as the {} an empty Lua table would be.
   file:write(#entries == 0 and '[]' or pandoc.json.encode(entries))
   file:close()

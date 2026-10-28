@@ -51,7 +51,7 @@ local keys = {}
 local function read_bib(path)
   local file = io.open(path, 'r')
   if not file then
-    io.stderr:write('wikilink-citations: could not read ' .. path .. '\n')
+    io.stderr:write("Couldn't open the bibliography at " .. path .. ". Check that the file is there and can be read.\n")
     return
   end
   for line in file:lines() do
@@ -106,7 +106,7 @@ end
 --- in a markdown link means somewhere in the exported document itself, by the
 --- ID pandoc gives it. Everything else points at a file in the vault, which the
 --- export does not have and will never have, and so does a wikilink to a
---- heading: its headings are the note's, for whoever wrote it.
+--- heading: its headings are the note's, for the person who wrote it.
 local function reachable(el, target)
   if target:match('^%a[%w+.-]*:') then return true end
   return target:sub(1, 1) == '#' and not el.classes:includes('wikilink')

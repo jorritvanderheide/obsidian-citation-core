@@ -2,11 +2,12 @@
 
 **How a note becomes pandoc's input, with its links turned into real citations.**
 
-The part of [Due Credit](https://codeberg.org/BW20/obsidian-due-credit) that
-another plugin can use too: every decision about reading a note, what is a
-citation and how one is written, the works a `.bib` holds, and what pandoc is
-asked to make. It has no Obsidian UI and no settings. A plugin bundles it into
-its own `main.js` and wires it to Obsidian.
+This is the part of [Due Credit](https://codeberg.org/BW20/obsidian-due-credit)
+that [In the Open](https://codeberg.org/BW20/obsidian-in-the-open) uses too. It
+turns a note into pandoc's input, works out which links are citations and how
+to write one, reads the works in a `.bib` file, and builds the arguments pandoc
+runs with. It has no interface and no settings of its own. Each plugin bundles
+it into its own `main.js` and connects it to Obsidian.
 
 ## What's here
 
@@ -30,40 +31,42 @@ How a link becomes a citation, form by form, is in Due Credit's
 
 ## Using it in a plugin
 
-A plugin depends on it twice, once for npm and once for Nix, both pointing at
-the same code:
+A plugin depends on it twice, once for npm and once for Nix, both pinned to the
+same commit:
 
-- **npm:** `"obsidian-citation-core": "file:../obsidian-citation-core"` in
-  `devDependencies`, with this repository checked out next to the plugin's.
-  A change here shows up in the plugin's next build, with nothing to link or
-  publish.
-- **Nix:** a flake input, which `flake.lock` pins. The plugin's package copies
-  it next to its source before `npm ci`, and its `checks` run this
-  repository's checks at the pinned commit. CI checks out the commit
-  `flake.lock` names, so a release is built from the pinned core, not
-  whatever is checked out.
+- **npm:** a git dependency on the GitHub mirror, at that commit, in
+  `devDependencies`:
+  `"obsidian-citation-core": "git+https://github.com/jorritvanderheide/obsidian-citation-core.git#<commit>"`.
+  A clean checkout of the plugin builds with it, which the plugin directory's
+  review needs. To work on the core and a plugin at once, run
+  `npm install --no-save ../obsidian-citation-core` in the plugin.
+- **Nix:** a flake input, which `flake.lock` pins to the same commit. The
+  plugin's `checks` run this repository's checks at that commit, and one more
+  check fails when the two pins disagree.
 
 ## The built-in pandoc
 
-Pandoc's own WebAssembly build, which a plugin runs in itself, for whoever
-has no pandoc installed or can't install one. `src/core/built-in.ts` pins it,
-pandoc 3.13 from pandoc's release, by the hash of the archive and of the file;
-`src/wasm.ts` downloads it once, when the person agrees, into the user's
-cache folder (`cacheFolder`), outside every vault, where the plugins that
-use it share it.
+The built-in pandoc is pandoc's own WebAssembly build, which a plugin runs
+inside Obsidian for someone who has no pandoc installed or can't install one.
+`src/core/built-in.ts` pins it, pandoc 3.13 from pandoc's release, by the hash
+of the archive and of the file. `src/wasm.ts` downloads it once, when the user
+agrees, into their cache folder (`cacheFolder`). That's outside every vault,
+and the plugins that use it share it.
 
-- **Which pandoc runs** is the **Pandoc** setting's (`choosePandoc`): its
-  default, `pandoc`, is an installed one when the PATH has it and the
-  built-in one when it doesn't, and so is a blanked setting; anything
-  else is a pandoc of yours. `pandocFor` turns the setting into a `Pandoc`.
-- **What it sees** is the vault, as `/`, and each folder a file it needs is
-  in, under a name of its own (`Mounts`): nothing else on the disk. Paths
-  go through `Pandoc.see`, a run's through `seen` and your Pandoc arguments
-  through `seenArgs`, and the resource path is joined with
-  `Pandoc.delimiter`, which is `:` for the built-in one on every platform. So
-  the same arguments work for either pandoc, on Windows too.
-- **What it can't do** is run another program: a PDF engine, or a
-  `--filter` of yours. Those need an installed pandoc.
+- **Which pandoc runs** depends on the **Pandoc** setting (`choosePandoc`).
+  The default, `pandoc`, is an installed pandoc when one is on the PATH, and
+  the built-in one when there isn't. An empty setting counts as the default.
+  Anything else is the path to your own pandoc. `pandocFor` turns the setting
+  into a `Pandoc`.
+- **It sees only the vault and the folders it's given.** The vault is `/`, and
+  each folder a file it needs is in gets a name of its own (`Mounts`). It
+  can't see the rest of the disk. Paths go through `Pandoc.see`, a run's
+  through `seen` and your Pandoc arguments through `seenArgs`. The resource
+  path is joined with `Pandoc.delimiter`, which is `:` for the built-in one on
+  every platform, so the same arguments work for either pandoc, on Windows
+  too.
+- **It can't run another program**, such as a PDF engine or your own
+  `--filter`. Those need an installed pandoc.
 - It runs through Node's WASI, in the plugin, so it is desktop only, as the
   plugins are.
 
@@ -86,27 +89,29 @@ nix flake check # all three, then the tests again on the built-in pandoc
 and skips what it can't run: everything without pandoc, and the PDF tests
 without xelatex. `tests/wasm.test.ts` runs the built-in pandoc as a plugin
 does, from `PANDOC_WASM`, which `nix develop` sets. `nix flake check` runs the
-whole suite twice: on the pinned pandoc, and on the built-in one as `pandoc`
-(`scripts/pandoc-wasm.mjs`); that run skips the PDF tests, since the built-in
-pandoc runs no PDF engine. Citeproc's output changes between pandoc versions,
-so the expected results are for one: 3.13, the built-in pandoc's version,
-which this flake pins as pandoc's own static build for Linux, where CI runs.
-Move them together, the hashes in `src/core/built-in.ts` too.
+whole suite twice, once on the pinned pandoc and once on the built-in one as
+`pandoc` (`scripts/pandoc-wasm.mjs`). The second run skips the PDF tests,
+since the built-in pandoc runs no PDF engine.
+
+Citeproc's output changes between pandoc versions, so the expected results are
+for one version, 3.13. That's the built-in pandoc's version, and this flake
+pins the same one as pandoc's own static build for Linux, where CI runs. Move
+the two together, and the hashes in `src/core/built-in.ts` with them.
 
 ### The conformance check
 
-Pandoc reads its own markdown, which isn't Obsidian's, and has to: its
-CommonMark reader has no `[@key]` citations. To find where the two read your
-notes differently, run the conformance check on a vault, or any folder of
-markdown:
+Pandoc has to read notes as its own markdown, because its CommonMark reader
+doesn't know `[@key]` citations. But pandoc's markdown isn't quite Obsidian's.
+To find where the two read your notes differently, run the conformance check on
+a vault, or any folder of markdown:
 
 ```sh
 VAULT=~/path/to/vault npx vitest run tests/conformance.test.ts
 ```
 
 It lists every note whose blocks pandoc reads unlike CommonMark, and any text
-the plugin would take for code, where a comment would be kept. It isn't part of
-the normal test run, because it needs notes.
+the plugin would mistake for code, which would let a comment end up in the
+export. It isn't part of the normal test run, because it needs notes.
 
 ## License
 

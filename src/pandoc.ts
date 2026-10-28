@@ -22,6 +22,12 @@ export class ExportError extends Error {}
 /** Where pandoc's path is set, when the plugin doesn't say. */
 const SETTINGS = "the plugin's settings";
 
+/** What to say when pandoc stops and prints nothing: `code` is its exit code, null when it has none. */
+const stopped = (code: number | null) =>
+	code === null
+		? 'Pandoc stopped before it finished, without saying why. Try again, and if it keeps happening, please open an issue.'
+		: `Pandoc stopped without saying why (exit code ${code}). Try again, and if it keeps happening, please open an issue.`;
+
 /**
  * Call `use` with the filters, the Markdown template, the PDF's font and the
  * document's metadata on disk, and clean up afterwards.
@@ -88,7 +94,7 @@ export interface Pandoc {
  * path is set, in the plugin that runs it, for the message when it isn't there.
  */
 export function installedPandoc(executable: string, cwd: string, settings = SETTINGS): Pandoc {
-	const missing = () => new ExportError(`Couldn't find pandoc at "${executable}". Install it, or set its full path in ${settings}.`);
+	const missing = () => new ExportError(`Couldn't find pandoc at "${executable}". Check the path in ${settings}, or set it back to "pandoc".`);
 	return {
 		builtIn: false,
 		see: (host) => host,
@@ -98,7 +104,7 @@ export function installedPandoc(executable: string, cwd: string, settings = SETT
 				execFile(executable, ['--dump-args', ...args], { cwd }, (error: (Error & { code?: unknown }) | null, stdout: string, stderr: string) => {
 					if (error === null) resolve(stdout);
 					else if (error.code === 'ENOENT') reject(missing());
-					else reject(new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim() || error.message}`));
+					else reject(new ExportError(`Pandoc can't use your Pandoc arguments. It said: ${stderr.trim() || error.message}`));
 				});
 			}),
 		run: (args, input) =>
@@ -112,7 +118,7 @@ export function installedPandoc(executable: string, cwd: string, settings = SETT
 				child.on('error', (error: NodeJS.ErrnoException) => reject(error.code === 'ENOENT' ? missing() : error));
 				child.on('close', (code) => {
 					if (code === 0) resolve(stderr.trim());
-					else reject(new ExportError(stderr.trim() || `Pandoc stopped with exit code ${code ?? 'unknown'}.`));
+					else reject(new ExportError(stderr.trim() || stopped(code)));
 				});
 				child.stdin.end(input);
 			}),
@@ -123,7 +129,7 @@ export function installedPandoc(executable: string, cwd: string, settings = SETT
  * The built-in pandoc, `module` from `loadBuiltIn`, with `vault` as its `/`.
  * It runs in the plugin, through WASI, and sees only the vault and the
  * folders `see` gives it (`Mounts`), never the rest of the disk. It runs no
- * other program, so a PDF engine or a `--filter` of yours stops it with
+ * other program, so a PDF engine or your own `--filter` stops it with
  * pandoc's own message.
  */
 export function builtInPandoc(module: WebAssembly.Module, vault: string): Pandoc {
@@ -136,12 +142,12 @@ export function builtInPandoc(module: WebAssembly.Module, vault: string): Pandoc
 		delimiter: ':',
 		dumpArgs: async (args) => {
 			const { code, stdout, stderr } = await once(['--dump-args', ...args], null);
-			if (code !== 0) throw new ExportError(`Pandoc doesn't accept your Pandoc arguments: ${stderr.trim()}`);
+			if (code !== 0) throw new ExportError(`Pandoc can't use your Pandoc arguments. It said: ${stderr.trim()}`);
 			return stdout;
 		},
 		run: async (args, input) => {
 			const { code, stderr } = await once(args, input);
-			if (code !== 0) throw new ExportError(stderr.trim() || `Pandoc stopped with exit code ${code}.`);
+			if (code !== 0) throw new ExportError(stderr.trim() || stopped(code));
 			return stderr.trim();
 		},
 	};
