@@ -383,6 +383,42 @@ export function imageEmbeds(text: string, resolve: (linkpath: string) => string 
 	);
 }
 
+/** `![description](path "title")`, with the path in `<…>` or not. */
+const MARKDOWN_IMAGE = /!\[((?:[^\]\\]|\\.)*)\]\(\s*(<[^>\n]*>|[^\s)]+)(\s+"[^"\n]*")?\s*\)/g;
+/** An address with a scheme, `https:` or `data:`, which is no file in the vault. */
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+
+/**
+ * Every markdown image of a file in the vault, `![A bed](bed.png)`, as the
+ * file Obsidian would show, the way `imageEmbeds` writes an embed.
+ *
+ * Obsidian finds the file as it finds a link, so `resolve` is asked, with the
+ * path's `%20`s decoded: a bare name can live in any folder, which pandoc
+ * wouldn't find. `|300` at the end of the description is a width, as in
+ * Obsidian. An address on the web, an image Obsidian can't find, and code are
+ * left as written.
+ */
+export function imageLinks(text: string, resolve: (linkpath: string) => string | null): string {
+	return outsideCode(text, (prose) =>
+		prose.replace(MARKDOWN_IMAGE, (image: string, description: string, target: string, title?: string) => {
+			const written = target.startsWith('<') ? target.slice(1, -1) : target;
+			if (written === '' || SCHEME.test(written) || written.startsWith('#')) return image;
+			let linkpath = written;
+			try {
+				linkpath = decodeURI(written);
+			} catch {
+				// A lone % is part of the name.
+			}
+			if (!IMAGE.test(linkpath)) return image;
+			const path = resolve(linkpath);
+			if (path === null) return image;
+			const sized = /^(.*?)\\?\|\s*(\d+)(?:x\d+)?\s*$/.exec(description);
+			const alt = sized ? (sized[1] ?? '').trim() : description;
+			return `![${alt}](<${path}>${title ?? ''})${sized ? `{width=${sized[2]}px}` : ''}`;
+		}),
+	);
+}
+
 const LINK = /(?<!!)\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
 
 /**

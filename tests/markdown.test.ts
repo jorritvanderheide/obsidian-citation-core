@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -262,6 +262,30 @@ describe('liftHeadings', () => {
 
 	it('leaves tags and code alone', () => {
 		expect(liftHeadings('#tag\n```\n## not a heading\n```\n## A').body).toBe('#tag\n```\n## not a heading\n```\n# A');
+	});
+});
+
+describe('imageLinks', () => {
+	const files: Record<string, string> = { 'bed.png': '/vault/Attachments/bed.png', 'Garden/my bed.jpg': '/vault/Garden/my bed.jpg', '../Attachments/bed.png': '/vault/Attachments/bed.png' };
+	const resolve = (linkpath: string) => files[linkpath] ?? null;
+
+	it('points a markdown image at the file Obsidian would show', () => {
+		expect(imageLinks('![A raised bed](bed.png)', resolve)).toBe('![A raised bed](</vault/Attachments/bed.png>)');
+		expect(imageLinks('![](../Attachments/bed.png)', resolve)).toBe('![](</vault/Attachments/bed.png>)');
+	});
+
+	it('decodes %20, and reads a path in <…>', () => {
+		expect(imageLinks('![Mine](Garden/my%20bed.jpg) ![Mine](<Garden/my bed.jpg>)', resolve)).toBe('![Mine](</vault/Garden/my bed.jpg>) ![Mine](</vault/Garden/my bed.jpg>)');
+	});
+
+	it('keeps a title, and reads |300 as a width, in a table cell too', () => {
+		expect(imageLinks('![A bed](bed.png "In March")', resolve)).toBe('![A bed](</vault/Attachments/bed.png> "In March")');
+		expect(imageLinks('![A bed|300](bed.png) | ![A bed\\|640x480](bed.png) |', resolve)).toBe('![A bed](</vault/Attachments/bed.png>){width=300px} | ![A bed](</vault/Attachments/bed.png>){width=640px} |');
+	});
+
+	it('leaves web addresses, files that are no image, images it can\'t find, and code as written', () => {
+		const text = '![Map](https://example.org/map.png) ![](data:image/png;base64,AAAA) ![Paper](paper.pdf) ![Gone](gone.png) `![A bed](bed.png)` [A link](bed.png)';
+		expect(imageLinks(text, resolve)).toBe(text);
 	});
 });
 

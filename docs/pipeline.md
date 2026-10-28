@@ -27,9 +27,11 @@ new step goes there, in its place in the order.
 9. **Lift headings** (`liftHeadings`). A leading H1 becomes the title and every
    other heading moves up a level, unless the note uses H1 for its own sections
    further down.
-10. **Resolve images** (`imageEmbeds`). `![[figure.png|300]]` becomes a
-    markdown image of the file Obsidian would show, 300 pixels wide. Other
-    embeds, such as notes, PDFs and canvases, are dropped.
+10. **Resolve images** (`imageLinks`, then `imageEmbeds`). A markdown image
+    of a file in the vault, `![A chart](figure.png)`, and an embed,
+    `![[figure.png|300]]`, both become a markdown image of the file Obsidian
+    would show, the second 300 pixels wide. Images on the web stay as they are.
+    Other embeds, such as notes, PDFs and canvases, are dropped.
 
 Then `documentMetadata` builds the metadata: the title (the lifted H1, the
 `title` property, or the file name), the reference list's heading, and only the

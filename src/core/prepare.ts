@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -111,7 +111,8 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	const cited = citeByKey(footnotes(prose), propertyOf);
 	const { title, body: lifted } = liftHeadings(options.postOf ? linkPosts(cited, options.postOf) : cited);
 	// Forward slashes, which pandoc reads on every platform.
-	const markdown = imageEmbeds(lifted, (linkpath) => vault.resolve(linkpath)?.file.replace(/\\/g, '/') ?? null);
+	const file = (linkpath: string) => vault.resolve(linkpath)?.file.replace(/\\/g, '/') ?? null;
+	const markdown = imageEmbeds(imageLinks(lifted, file), file);
 	const frontmatter = yaml === null ? null : vault.parseYaml(yaml);
 	const metadata = options.post
 		? postMetadata(frontmatter, title, options.name, options.noteStyle, options.post)
