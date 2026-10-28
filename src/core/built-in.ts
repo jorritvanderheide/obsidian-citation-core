@@ -27,10 +27,10 @@ export type Choice = { kind: 'installed'; executable: string } | { kind: 'built-
 /**
  * Which pandoc the **Pandoc** setting asks for. The default, `pandoc`, is an
  * installed one when `onPath` finds it, and the built-in one when it
- * doesn't, so a stranger without pandoc can still export; empty is the
- * default, as a blanked address is. Anything else is an address of yours,
- * used as it is: when nothing is there, running it says so, rather than
- * quietly running another pandoc.
+ * doesn't, so a stranger without pandoc can still export; empty, or only
+ * spaces, is the default too, as a blanked address is. Anything else is an
+ * address of yours, used as given, trimmed: when nothing is there, running
+ * it says so, rather than quietly running another pandoc.
  */
 export function choosePandoc(setting: string, onPath: (name: string) => string | null): Choice {
 	const value = setting.trim();
@@ -114,8 +114,9 @@ export class Mounts {
 const PATH_FIELDS = ['obsidian', 'filter', 'afterCiteproc', 'postReferences', 'template', 'fonts', 'metadata', 'references', 'bibliography', 'csl', 'referenceDoc', 'output'] as const;
 
 /**
- * `run` with every path in it as pandoc sees it, through `see`. The resource
- * path is a list, which the plugin joins itself, with `Pandoc.delimiter`.
+ * `run` with every path in it as pandoc sees it, through `see`. Its
+ * `resourcePath` isn't touched: the plugin passes each folder through `see`
+ * and joins them with `Pandoc.delimiter` first.
  */
 export function seen<T extends object>(run: T, see: (host: string) => string): T {
 	const out = { ...run } as Record<string, unknown>;

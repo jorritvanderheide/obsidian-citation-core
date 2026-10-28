@@ -16,9 +16,13 @@ its own `main.js` and wires it to Obsidian.
 | `src/pandoc.ts` | Running pandoc, an installed one or the built-in one, and writing its files to a temporary folder. |
 | `src/wasm.ts` | The built-in pandoc on disk: loading it, checked against its pinned hash, and downloading it. |
 | `src/index.ts` | Everything a plugin imports. |
+| `src/modules.d.ts` | The declarations of the `.lua` and `.ttf` imports, which a plugin copies. |
 | `pandoc/` | The Lua filters. |
 | `fonts/` | Open Sans, for PDF. |
 | `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
+| `tests/` | A test for each file in `src/core/`, and `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc. |
+| `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
+| `flake.nix` | The pinned pandoc, as pandoc's static build and its WebAssembly build, and the checks. |
 | `docs/pipeline.md` | Every step from a note to pandoc's input, in order. |
 
 How a link becomes a citation, form by form, is in Due Credit's
@@ -54,8 +58,10 @@ use it share it.
   else is a pandoc of yours. `pandocFor` turns the setting into a `Pandoc`.
 - **What it sees** is the vault, as `/`, and each folder a file it needs is
   in, under a name of its own (`Mounts`): nothing else on the disk. Paths
-  go through `Pandoc.see`, and a run's through `seen`, so the same arguments
-  work for either pandoc, on Windows too.
+  go through `Pandoc.see`, a run's through `seen` and your Pandoc arguments
+  through `seenArgs`, and the resource path is joined with
+  `Pandoc.delimiter`, which is `:` for the built-in one on every platform. So
+  the same arguments work for either pandoc, on Windows too.
 - **What it can't do** is run another program: a PDF engine, or a
   `--filter` of yours. Those need an installed pandoc.
 - It runs through Node's WASI, in the plugin, so it is desktop only, as the
@@ -68,7 +74,7 @@ The plugin bundles the source, so its esbuild needs `'.lua': 'text'` and
 ## Development
 
 ```sh
-nix develop     # Node.js, the pandoc the tests expect, and the built-in one
+nix develop     # Node.js, the pandoc the tests expect, and the built-in one (Linux)
 npm install
 npm run typecheck
 npm run lint
@@ -81,11 +87,11 @@ and skips what it can't run: everything without pandoc, and the PDF tests
 without xelatex. `tests/wasm.test.ts` runs the built-in pandoc as a plugin
 does, from `PANDOC_WASM`, which `nix develop` sets. `nix flake check` runs the
 whole suite twice: on the pinned pandoc, and on the built-in one as `pandoc`
-(`scripts/pandoc-wasm.mjs`), which skips the PDF tests, since it runs no PDF
-engine. Citeproc's output changes between pandoc versions, so the
-expected results are for one: 3.13, the built-in pandoc's version, which
-this flake pins as pandoc's own static build. Move them together, the hashes
-in `src/core/built-in.ts` too.
+(`scripts/pandoc-wasm.mjs`); that run skips the PDF tests, since the built-in
+pandoc runs no PDF engine. Citeproc's output changes between pandoc versions,
+so the expected results are for one: 3.13, the built-in pandoc's version,
+which this flake pins as pandoc's own static build for Linux, where CI runs.
+Move them together, the hashes in `src/core/built-in.ts` too.
 
 ### The conformance check
 

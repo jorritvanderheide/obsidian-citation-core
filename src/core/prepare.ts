@@ -44,7 +44,7 @@ export interface Options {
 }
 
 export interface Prepared {
-	/** The note as pandoc's markdown, for stdin. */
+	/** The note as pandoc's markdown, for pandoc to read (`Pandoc.run`). */
 	markdown: string;
 	/** The document's metadata, for a file of its own. */
 	metadata: Record<string, unknown>;

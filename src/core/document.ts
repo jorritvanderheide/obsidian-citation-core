@@ -90,7 +90,7 @@ export interface Run {
 	bibliography: string | null;
 	/** A `.csl` file, or null for pandoc's built-in style. */
 	csl: string | null;
-	/** Where pandoc looks for images, joined with the platform's delimiter. */
+	/** Where pandoc looks for images: folders as `Pandoc.see` gives them, joined with `Pandoc.delimiter`. */
 	resourcePath: string;
 	/** Whether one newline is a line break, from `lineBreaks`. */
 	hardLineBreaks: boolean;
@@ -102,7 +102,8 @@ export interface Run {
 }
 
 /**
- * Pandoc's arguments for one format. The note itself goes in on stdin, and its
+ * Pandoc's arguments for one format. The note itself goes in on its own
+ * (`Pandoc.run`: stdin, or an input file for the built-in pandoc), and its
  * metadata in a file of its own: pandoc reads a block between `---` lines as
  * metadata wherever it is, and in the note that is text Obsidian shows, whose
  * keys would travel inside a Word file. The two table syntaxes Obsidian does
@@ -342,7 +343,7 @@ export interface PostRun {
 	bibliography: string | null;
 	/** A `.csl` file, or null for pandoc's built-in style. */
 	csl: string | null;
-	/** Where pandoc looks for images, joined with the platform's delimiter. */
+	/** Where pandoc looks for images: folders as `Pandoc.see` gives them, joined with `Pandoc.delimiter`. */
 	resourcePath: string;
 	/** Whether one newline is a line break, from `lineBreaks`. */
 	hardLineBreaks: boolean;
@@ -352,8 +353,8 @@ export interface PostRun {
 }
 
 /**
- * Pandoc's arguments for a post. The note is read as for a document, from
- * stdin, and so are its citations; then:
+ * Pandoc's arguments for a post. The note is read as for a document, and so
+ * are its citations; then:
  *
  * - Every heading a level down, as in Markdown export: the site shows the
  *   title as the page's one level 1 heading, and the post's start at 2.

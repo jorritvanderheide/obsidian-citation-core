@@ -77,7 +77,7 @@ export interface Pandoc {
 	see(host: string): string;
 	/** What joins the folders of `--resource-path`. */
 	readonly delimiter: string;
-	/** Run pandoc with `input` on stdin. Resolves to what it warned about, if anything. */
+	/** Run pandoc on `input`, the note: on stdin for an installed pandoc, as an input file for the built-in one (`runWasi`). Resolves to what it warned about, if anything. */
 	run(args: string[], input: string): Promise<string>;
 	/** What pandoc makes of arguments: where it would write, then what it would read, from `--dump-args`. */
 	dumpArgs(args: string[]): Promise<string>;
