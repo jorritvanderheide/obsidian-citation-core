@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -62,10 +62,10 @@ export interface Missing {
 	unresolved: string[];
 	/**
 	 * For a post, links to notes of your own that have no post, which go out
-	 * as their words: link targets as written, each once. Always empty for a
-	 * document.
+	 * as their words: the words the post shows, and the note the link is to,
+	 * each pair once. Always empty for a document.
 	 */
-	unpublished: string[];
+	unpublished: { words: string; note: string }[];
 }
 
 /**
@@ -99,7 +99,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 
 	const { yaml, body } = splitFrontmatter(text);
 	const prose = stripTags(dropPluginBlocks(stripBlockIds(stripComments(body))));
-	const targets = wikilinkTargets(prose).map((target) => ({ target, linkpath: linkpathOf(target).trim() }));
+	const targets = wikilinks(prose).map(({ target, words }) => ({ target, words, linkpath: linkpathOf(target).trim() }));
 	const check = (named: (link: { target: string; linkpath: string }) => string | null) =>
 		options.keys ? missingKeys(targets, named, options.keys) : [];
 	const missing = {
@@ -121,20 +121,21 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 
 /**
  * The links of a post to notes of your own without a post: not a paper, which
- * is a citation, and not a file, such as a PDF, which is no note. Each target
- * once, as written, in the order of the note.
+ * is a citation, and not a file, such as a PDF, which is no note. Each one by
+ * the words the post shows and the note it links to, once, in the order of the
+ * note.
  */
 function unpublished(
-	targets: { target: string; linkpath: string }[],
+	targets: { words: string; linkpath: string }[],
 	resolve: (linkpath: string) => Linked | null,
 	keyFor: (linkpath: string) => string | null,
 	postOf: (linkpath: string) => string | null,
-): string[] {
-	const found: string[] = [];
-	for (const { target, linkpath } of targets) {
+): { words: string; note: string }[] {
+	const found: { words: string; note: string }[] = [];
+	for (const { words, linkpath } of targets) {
 		const linked = resolve(linkpath);
 		if (linked === null || !linked.path.endsWith('.md') || keyFor(linkpath) !== null || postOf(linkpath) !== null) continue;
-		if (!found.includes(target)) found.push(target);
+		if (!found.some((link) => link.words === words && link.note === linkpath)) found.push({ words, note: linkpath });
 	}
 	return found;
 }

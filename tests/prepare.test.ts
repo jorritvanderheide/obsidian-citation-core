@@ -79,9 +79,12 @@ describe('a post', () => {
 		expect(markdown).toBe('See [this idea](<https://bw20.nl/log/my-idea/>), [My idea](<https://bw20.nl/log/my-idea/>) and [[marsh2024]].');
 	});
 
-	it('lists the notes it links to that have no post, each once, and not papers, files or posts', () => {
-		const { missing } = prepare('[[Draft]], [[Draft|again]], [[My idea]], [[okafor2019]], [[paper.pdf]], [[Nowhere]].', draftVault, post);
-		expect(missing.unpublished).toEqual(['Draft']);
+	it('lists the notes it links to that have no post, by the words the post shows, each once, and not papers, files or posts', () => {
+		const { missing } = prepare('[[Draft]], [[Draft|again]], [[Draft#Why]], [[Draft| again ]], [[My idea]], [[okafor2019]], [[paper.pdf]], [[Nowhere]].', draftVault, post);
+		expect(missing.unpublished).toEqual([
+			{ words: 'Draft', note: 'Draft' },
+			{ words: 'again', note: 'Draft' },
+		]);
 	});
 
 	it('gives pandoc a post\'s metadata', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinkTargets } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -297,9 +297,16 @@ describe('imageEmbeds', () => {
 	});
 });
 
-describe('wikilinkTargets', () => {
-	it('lists targets without labels, embeds or code', () => {
-		expect(wikilinkTargets('[[a]] [[b#p. 3|see]] ![[c.png]] `[[d]]` [[Literature/e.md]]')).toEqual(['a', 'b#p. 3', 'Literature/e.md']);
+describe('wikilinks', () => {
+	it('lists each link with the words it shows, without embeds or code', () => {
+		expect(wikilinks('[[a]] [[b#p. 3|see]] ![[c.png]] `[[d]]` [[Literature/e.md]] [[f#Why]] [[#Top]] [[g| ]]')).toEqual([
+			{ target: 'a', words: 'a' },
+			{ target: 'b#p. 3', words: 'see' },
+			{ target: 'Literature/e.md', words: 'Literature/e.md' },
+			{ target: 'f#Why', words: 'f' },
+			{ target: '#Top', words: 'Top' },
+			{ target: 'g', words: 'g' },
+		]);
 	});
 });
 

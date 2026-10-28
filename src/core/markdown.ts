@@ -433,11 +433,20 @@ export function linkPosts(text: string, urlFor: (linkpath: string) => string | n
 	);
 }
 
-const WIKILINK = /(?<!!)\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
-
-/** Every wikilink target outside code, as written. Embeds are not links. */
-export function wikilinkTargets(text: string): string[] {
+/**
+ * Every wikilink outside code: its target as written, and the words it shows,
+ * as the filter writes a link it doesn't keep. Those are the alias, or without
+ * one the target up to its heading, or the heading of a link within the note.
+ * Embeds are not links.
+ */
+export function wikilinks(text: string): { target: string; words: string }[] {
 	return segments(text)
 		.filter((segment) => !segment.code)
-		.flatMap((segment) => [...segment.text.matchAll(WIKILINK)].map((match) => (match[1] ?? '').trim()));
+		.flatMap((segment) =>
+			[...segment.text.matchAll(LINK)].map((match) => {
+				const target = (match[1] ?? '').trim();
+				const [name = '', ref = ''] = target.split(/#(.*)/);
+				return { target, words: match[2]?.trim() || name.trim() || ref.replace(/^\^/, '') };
+			}),
+		);
 }
