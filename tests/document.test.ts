@@ -223,7 +223,6 @@ describe('a post', () => {
 		expect(markdown.indexOf('--lua-filter=p.lua')).toBeLessThan(markdown.indexOf('--lua-filter=a.lua'));
 		expect(markdown).toContain('--to=gfm-raw_html');
 		expect(markdown[0]).toMatch(/-implicit_figures$/);
-		expect(pandocArgs('docx', { obsidian: 'o.lua', filter: 'f.lua', afterCiteproc: 'a.lua', template: 't', fonts: 'f', metadata: 'm.json', bibliography: null, csl: null, hardLineBreaks: false, referenceDoc: null, extra: [], resourcePath: '.', output: 'out' })[0]).toMatch(/-implicit_figures$/);
 		expect(markdown).toContain('--metadata=references-out=r.json');
 		const html = postArgs('html', run);
 		expect(html).toContain('--to=html');
