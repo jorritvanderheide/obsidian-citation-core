@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.3.2
 
 - A Markdown link is read as a wikilink only when it points at a note, a `.md`
   file. 0.3.0 also took links to web pages, folders and PDFs for links to
