@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinked, wikilinks } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -72,8 +72,9 @@ export interface Missing {
  * The note, made into pandoc's input.
  *
  * First what never leaves: comments, then block IDs, plugins' code blocks and
- * tags, which mean nothing outside the vault. The check reads the note
- * then, before any link has been rewritten. Then footnotes are written the
+ * tags, which mean nothing outside the vault, with Markdown links to the vault
+ * made the wikilinks Obsidian reads them as. The check reads the note then,
+ * before any link is pointed at its key. Then footnotes are written the
  * way pandoc reads them, links to paper notes are pointed at their keys, the
  * title is lifted, and images are resolved on what is left.
  *
@@ -98,7 +99,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	};
 
 	const { yaml, body } = splitFrontmatter(text);
-	const prose = stripTags(dropPluginBlocks(stripBlockIds(stripComments(body))));
+	const prose = stripTags(dropPluginBlocks(stripBlockIds(wikilinked(stripComments(body)))));
 	const targets = wikilinks(prose).map(({ target, words }) => ({ target, words, linkpath: linkpathOf(target).trim() }));
 	const check = (named: (link: { target: string; linkpath: string }) => string | null) =>
 		options.keys ? missingKeys(targets, named, options.keys) : [];

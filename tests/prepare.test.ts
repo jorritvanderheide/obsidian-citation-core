@@ -67,6 +67,13 @@ describe('prepare', () => {
 		expect(missing.unresolved).toEqual([]);
 	});
 
+	it('points a Markdown link to a paper note at its key, and checks it, as a wikilink', () => {
+		const keys = new Set(['jones/2019']);
+		const { markdown, missing } = prepare('As [Jones](jones-2019.md) and [Lee](lee2020.md) show.\n', vault, { ...options, keys });
+		expect(markdown).toContain('[[jones/2019|Jones]]');
+		expect(missing.unresolved).toEqual(['lee2020']);
+	});
+
 	it('points only a link to a note with a key property at that key', () => {
 		expect(prepare('[[Marsh (2024) The Quiet Archive#p. 4]] [[okafor2019|see okafor2019]]', vault, options).markdown).toBe('[[marsh2024#p. 4]] [[okafor2019|see okafor2019]]');
 	});

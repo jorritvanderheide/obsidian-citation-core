@@ -422,6 +422,33 @@ export function imageLinks(text: string, resolve: (linkpath: string) => string |
 
 const LINK = /(?<!!)\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
 
+/** A Markdown link, not an image: its words, and its target, bare or in `<…>`. One with a title is left out. */
+const MARKDOWN_LINK = /(?<!!)\[([^\]]*)\]\((<[^>]*>|[^)\s]+)\)/g;
+
+/**
+ * Every Markdown link to a file in the vault, as the wikilink Obsidian takes it
+ * for: `[Smith](smith-2017.md)` is `[[smith-2017|Smith]]`. Obsidian writes a
+ * link either way, as its "Use [[Wikilinks]]" setting says, and reads both
+ * alike, so from here on every step has one kind of link to know. A web
+ * address, an anchor in the note, an image and code are left as they are.
+ */
+export function wikilinked(text: string): string {
+	return outsideCode(text, (prose) =>
+		prose.replace(MARKDOWN_LINK, (link: string, words: string, written: string) => {
+			const bare = written.startsWith('<') ? written.slice(1, -1) : written;
+			if (/^[a-z][\w+.-]*:/i.test(bare) || bare.startsWith('#')) return link;
+			let target: string;
+			try {
+				target = decodeURIComponent(bare);
+			} catch {
+				return link;
+			}
+			const path = target.replace(/\.md(?=#|$)/, '');
+			return words.trim() === '' ? `[[${path}]]` : `[[${path}|${words}]]`;
+		}),
+	);
+}
+
 /**
  * Every link to a paper note, pointed at the paper's citation key.
  *

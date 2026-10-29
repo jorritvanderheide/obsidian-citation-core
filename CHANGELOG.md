@@ -21,6 +21,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
 - A Markdown export leaves an image and the line in italics under it as
   Obsidian shows them, the caption on its own line. 0.2.0 put a blank line
   between them, which made the caption a paragraph of its own.
+- A Markdown link to a note, `[Smith](smith-2017.md)`, which Obsidian writes
+  with "Use [[Wikilinks]]" off, is read as the wikilink it means. A link to a
+  paper note under another name cites its key, a post links to a published
+  note, and the check before an export lists one that won't cite.
 
 ## 0.2.0
 

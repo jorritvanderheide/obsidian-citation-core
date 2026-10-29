@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinks } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinked, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -385,5 +385,20 @@ describe('linkPosts', () => {
 	});
 	it('leaves every other link, embed and code as written', () => {
 		expect(linkPosts('[[Other]] ![[My idea]] `[[My idea]]` [[#Heading]]', urlFor)).toBe('[[Other]] ![[My idea]] `[[My idea]]` [[#Heading]]');
+	});
+});
+
+describe('wikilinked', () => {
+	// Obsidian writes a link to a note either way, as its "Use [[Wikilinks]]"
+	// setting says, and reads both alike.
+	it('makes a Markdown link to a file in the vault the wikilink Obsidian reads it as', () => {
+		expect(wikilinked('See [Smith](smith-2017.md) and [the claim](Literature/a.md#Claim).')).toBe('See [[smith-2017|Smith]] and [[Literature/a#Claim|the claim]].');
+		expect(wikilinked('[Lee](<Literature/Lee 2020.md>) and [Ann](Literature/Ann%20Marsh.md)')).toBe('[[Literature/Lee 2020|Lee]] and [[Literature/Ann Marsh|Ann]]');
+	});
+
+	it('leaves a web address, an anchor, an image, code and a link with a title alone', () => {
+		const kept = '[site](https://example.org/a.md) [z](zotero://select/x) [up](#Intro) ![A chart](figure.png) `[x](y.md)` [t](a.md "title")';
+		expect(wikilinked(kept)).toBe(kept);
+		expect(wikilinked('```\n[x](y.md)\n```\n')).toBe('```\n[x](y.md)\n```\n');
 	});
 });
