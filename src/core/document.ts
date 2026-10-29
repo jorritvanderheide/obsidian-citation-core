@@ -263,14 +263,34 @@ const REFUSED: [string[], string][] = [
 	[['-h', '--help', '-v', '--version', '-D', '--print-default-template', '--print-default-data-file', '--print-highlight-style', '--list-input-formats', '--list-output-formats', '--list-extensions', '--list-highlight-languages', '--list-highlight-styles', '--dump-args', '--bash-completion'], "it only prints something, and doesn't export anything"],
 ];
 
+/** Pandoc's short options that take a value: in a bundle, the rest of it is the value. */
+const VALUED = new Set(['f', 'r', 't', 'w', 'o', 'M', 'd', 'V', 'H', 'B', 'A', 'F', 'L', 'T', 'c', 'D']);
+
+/**
+ * Whether an argument gives pandoc an option, as pandoc reads it. A long one
+ * by its name or any part of it from the start, since pandoc takes one that
+ * names only that option, and turns down one that names several. A short one
+ * anywhere in a bundle, `-sd x.yaml` being `-s -d x.yaml`, up to the first
+ * that takes a value, whose value is the rest: `-Mdate=2024` is no `-d`.
+ */
+function gives(arg: string, option: string): boolean {
+	if (arg.startsWith('--')) {
+		const name = arg.slice(2).split('=')[0] ?? '';
+		return option.startsWith('--') && name !== '' && option.startsWith(`--${name}`);
+	}
+	if (!arg.startsWith('-') || option.startsWith('--')) return false;
+	for (const letter of arg.slice(1)) {
+		if (`-${letter}` === option) return true;
+		if (VALUED.has(letter)) return false;
+	}
+	return false;
+}
+
 /** The first argument Due Credit will not pass on, and why, or null. */
 export function refused(args: string[]): { arg: string; why: string } | null {
 	for (const arg of args) {
 		for (const [options, why] of REFUSED) {
-			const hit = options.some((option) =>
-				option.startsWith('--') ? arg === option || arg.startsWith(`${option}=`) : !arg.startsWith('--') && arg.startsWith(option),
-			);
-			if (hit) return { arg, why };
+			if (options.some((option) => gives(arg, option))) return { arg, why };
 		}
 	}
 	return null;

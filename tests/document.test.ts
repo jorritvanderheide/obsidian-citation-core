@@ -78,6 +78,18 @@ describe('refused', () => {
 	it('says why', () => {
 		expect(refused(['-o', 'x'])?.why).toContain('save dialog');
 	});
+
+	// Pandoc takes a long option by any prefix that names only it, and reads
+	// short options run together, `-sd x.yaml`, as each of them.
+	it('refuses an option shortened, or bundled after a flag', () => {
+		for (const arg of ['--extr=m', '--ou=x.docx', '--defa=x.yaml', '--outp', '-sd', '-sdx.yaml', '-Nd', '-Cso', '-psto', '-sr']) {
+			expect(refused([arg])?.arg).toBe(arg);
+		}
+	});
+
+	it('reads the rest of a bundle after an option that takes a value as that value', () => {
+		expect(refused(['-Mdate=2024', '-Vdocumentclass=book', '-Lfilter-to.lua', '-T', 'dot', '-Ffoo'])).toBeNull();
+	});
 });
 
 describe('inputFiles', () => {

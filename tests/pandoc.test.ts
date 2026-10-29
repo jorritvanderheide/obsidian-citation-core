@@ -6,7 +6,7 @@ import { join } from 'path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
 import { keyOf, renameInAlias } from '../src/core/citations';
-import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences } from '../src/core/document';
+import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
 import { footnotes } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
 
@@ -44,6 +44,21 @@ describe.skipIf(!installed())('the pandoc these tests run against', () => {
 	it(`is pandoc ${BUILT_IN.version}, the built-in pandoc's version and CI's`, () => {
 		const found = execFileSync('pandoc', ['--version'], { encoding: 'utf8' }).split('\n')[0];
 		expect(found, `Run the tests in nix develop, which has pandoc ${BUILT_IN.version}`).toBe(`pandoc ${BUILT_IN.version}`);
+	});
+});
+
+describe.skipIf(!installed())('the options Due Credit refuses', () => {
+	// A refused option is matched by any start of its name, the way pandoc reads
+	// it. An option of pandoc's own whose whole name is such a start would be
+	// turned down for nothing: pandoc's own list says there is none.
+	it('include no other option pandoc has, by its whole name', () => {
+		const ours = ['output', 'from', 'read', 'to', 'write', 'defaults', 'extract-media', 'log', 'help', 'version', 'print-default-template', 'print-default-data-file', 'print-highlight-style', 'list-input-formats', 'list-output-formats', 'list-extensions', 'list-highlight-languages', 'list-highlight-styles', 'dump-args', 'bash-completion'];
+		const listed = [...execFileSync('pandoc', ['--help'], { encoding: 'utf8' }).matchAll(/--([a-z][a-z-]*)/g)].map((match) => match[1] ?? '');
+		expect(listed.length).toBeGreaterThan(100);
+		expect(listed.filter((name) => !ours.includes(name) && refused([`--${name}`]) !== null)).toEqual([]);
+		const short = [...execFileSync('pandoc', ['--help'], { encoding: 'utf8' }).matchAll(/^\s+-([A-Za-z])\b/gm)].map((match) => match[1] ?? '');
+		expect(short.filter((letter) => !'ofrtwdhvD'.includes(letter) && refused([`-${letter}`]) !== null)).toEqual([]);
+		expect(short).toContain('M');
 	});
 });
 
