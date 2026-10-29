@@ -9,6 +9,8 @@ const notes: Record<string, Linked> = {
 	'figure.png': { path: 'Attachments/figure.png', file: 'C:\\v\\Attachments\\figure.png', frontmatter: undefined },
 	// Obsidian resolves an empty linkpath to the note itself: here, a paper note.
 	'': { path: 'Literature/lindqvist2025.md', file: '/v/Literature/lindqvist2025.md', frontmatter: { citekey: 'lindqvist2025' } },
+	// A note in the papers folder, named for a key with a slash, in a subfolder.
+	'jones/2020': { path: 'Literature/jones/2020.md', file: '/v/Literature/jones/2020.md', frontmatter: {} },
 	// Named by Paper Trail for a key a note's name can't have.
 	'jones-2019': { path: 'Literature/jones-2019.md', file: '/v/Literature/jones-2019.md', frontmatter: { citekey: 'jones/2019' } },
 };
@@ -65,6 +67,11 @@ describe('prepare', () => {
 		expect(markdown).toContain('[[jones/2019|jones/2019, p. 12]]');
 		expect(missing.papers).toEqual([]);
 		expect(missing.unresolved).toEqual([]);
+	});
+
+	it('finds the key of a note in the papers folder named for a key with a slash', () => {
+		const { missing } = prepare('See [[jones/2020]].\n', vault, { ...options, keys: new Set(['jones/2020']) });
+		expect(missing.papers).toEqual([]);
 	});
 
 	it('points a Markdown link to a paper note at its key, and checks it, as a wikilink', () => {

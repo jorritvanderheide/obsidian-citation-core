@@ -290,14 +290,22 @@ function gives(arg: string, option: string): boolean {
 }
 
 /**
- * The bibliographies your own arguments give pandoc, with `--bibliography`
- * written however pandoc takes it, so the check can read their keys too.
+ * The bibliographies your own arguments give pandoc, with `--bibliography`, or
+ * as metadata with `-M bibliography=…`, written however pandoc takes them, so
+ * the check can read their keys too.
  */
 export function bibliographiesIn(args: string[]): string[] {
 	return args.flatMap((arg, at) => {
-		if (!gives(arg, '--bibliography')) return [];
-		const value = arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : args[at + 1];
-		return value ? [value] : [];
+		if (gives(arg, '--bibliography')) {
+			const value = arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : args[at + 1];
+			return value ? [value] : [];
+		}
+		if (!gives(arg, '--metadata') && !gives(arg, '-M')) return [];
+		// The value is attached, `-Mkey=…` or `--metadata=key=…`, or the next argument.
+		const attached = arg.startsWith('--') ? (arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : '') : arg.slice(2);
+		const value = attached || args[at + 1] || '';
+		const bibliography = /^bibliography[=:](.+)$/.exec(value)?.[1];
+		return bibliography ? [bibliography] : [];
 	});
 }
 

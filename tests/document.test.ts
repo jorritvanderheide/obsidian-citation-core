@@ -269,6 +269,10 @@ describe('a post', () => {
 });
 
 describe('bibliographiesIn', () => {
+	it('finds one given as metadata too', () => {
+		expect(bibliographiesIn(['-M', 'bibliography=/d.bib', '-Mbibliography=/e.bib', '--metadata=bibliography:/f.bib', '-M', 'lang=nl'])).toEqual(['/d.bib', '/e.bib', '/f.bib']);
+	});
+
 	it('finds every bibliography your arguments give, however the option is written', () => {
 		expect(bibliographiesIn(['--toc', '--bibliography=/a.bib', '--bibliography', '/b.bib', '--biblio=/c.json', '-M', 'x=1'])).toEqual(['/a.bib', '/b.bib', '/c.json']);
 		expect(bibliographiesIn(['--toc', '--biblatex'])).toEqual([]);

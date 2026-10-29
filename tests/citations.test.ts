@@ -112,3 +112,11 @@ describe('settings that must agree with the vault', () => {
 		expect(papersFolderStatus(['Literatures/marsh2024.md', 'Daily/x.md'], 'Literature')).toBe("There are no notes in Literature. Check the folder's name.");
 	});
 });
+
+describe('bibKeys, line by line as the filter reads it', () => {
+	// The filter splits a .bib at \n alone, so a file with old Mac line endings
+	// is one line to it. The check reads it the same way.
+	it('takes only \\n for a line break', () => {
+		expect([...bibKeys('@article{x,\r@book{y,\r')]).toEqual(['x']);
+	});
+});

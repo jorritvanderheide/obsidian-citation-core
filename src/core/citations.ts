@@ -12,8 +12,9 @@ import { inFolder } from './paths';
 /**
  * `@article{key,` and every other entry type, as the filter's `read_bib` reads
  * it: the @ opens a line, after spaces or tabs, and the key can be on the next.
+ * A line ends at \n alone, as it does for the filter.
  */
-const ENTRY = /^[ \t\uFEFF]*@\w+\s*[{(]\s*([^,\s]+)\s*,/gm;
+const ENTRY = /(?:^|\n)[ \t\uFEFF]*@\w+\s*[{(]\s*([^,\s]+)\s*,/g;
 
 /** Every entry key in a `.bib` file. */
 export function bibKeys(bib: string): Set<string> {

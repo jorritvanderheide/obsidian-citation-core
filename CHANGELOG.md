@@ -14,6 +14,11 @@ Each version is a tag, and a plugin pins only a tagged commit.
 - A backslash before a space exports as written, so a quote ending in a
   Windows path like `C:\temp\` keeps its last backslash. Pandoc read one there
   as a space that doesn't break.
+- The check before an export reads four more cases as the filter does: a `]`
+  in a link's words, a note in the papers folder named for a key with a slash,
+  a bibliography with old Mac line endings, and, for the plugins,
+  `bibliographiesIn` finds a bibliography given as `-M bibliography=…`.
+
 ## 0.3.1
 
 - Pandoc arguments let `+RTS` through again, as before 0.3.0. Refusing it

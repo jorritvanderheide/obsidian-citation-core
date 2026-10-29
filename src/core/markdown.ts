@@ -420,7 +420,7 @@ export function imageLinks(text: string, resolve: (linkpath: string) => string |
 	);
 }
 
-const LINK = /(?<!!)\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
+const LINK = /(?<!!)\[\[([^\]|]+)(?:\|((?:[^\]]|\](?!\]))*))?\]\]/g;
 
 /**
  * A Markdown link, not an image, an escaped bracket or a footnote: its words,

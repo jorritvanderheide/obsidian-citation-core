@@ -433,3 +433,13 @@ describe('literalBackslashes', () => {
 		expect(literalBackslashes('two \\\\ stay, and `a\\ b` and $a\\ b$')).toBe('two \\\\ stay, and `a\\ b` and $a\\ b$');
 	});
 });
+
+describe('wikilinks, with a bracket in the alias', () => {
+	it('reads a ] in an alias, as pandoc does, unless it closes the link', () => {
+		expect(wikilinks('[[k|a [b] c]] and [[k2|x]y]]')).toEqual([
+			{ target: 'k', words: 'a [b] c' },
+			{ target: 'k2', words: 'x]y' },
+		]);
+		expect(citeByKey('[[Old name|see [the] book]]', (linkpath) => (linkpath === 'Old name' ? 'marsh2024' : null))).toBe('[[marsh2024|see [the] book]]');
+	});
+});

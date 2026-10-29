@@ -95,7 +95,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	const keyFor = (linkpath: string) => {
 		const linked = resolve(linkpath);
 		if (linked === null) return null;
-		return propertyOf(linkpath) ?? (inFolder(linked.path, options.papersFolder) ? keyOf(linkpath) : null);
+		return propertyOf(linkpath) ?? (inFolder(linked.path, options.papersFolder) ? keyOf(linkpath, options.keys ?? undefined) : null);
 	};
 
 	const { yaml, body } = splitFrontmatter(text);
