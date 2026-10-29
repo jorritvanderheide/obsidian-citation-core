@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.3.0
 
 - A backslash before a word exports as written, `C:\path\x` and `Back\slash`,
   as Obsidian shows it. Pandoc read them as LaTeX commands and left them out of
