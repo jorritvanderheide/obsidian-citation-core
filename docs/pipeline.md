@@ -10,28 +10,31 @@ new step goes there, in its place in the order.
 2. **Strip comments** (`stripComments`). `%%…%%` and `<!-- … -->`, across lines
    and past code, each closed only by its own marker. A comment left open runs
    to the end of the note, to be safe.
-3. **Make Markdown links wikilinks** (`wikilinked`). Obsidian writes a link to a
+3. **Keep a backslash before a space** (`literalBackslashes`). Obsidian shows
+   it as it is, and pandoc would read it as a space that doesn't break, so it
+   goes in escaped. Code and math are left alone.
+4. **Make Markdown links wikilinks** (`wikilinked`). Obsidian writes a link to a
    note either way, and reads `[Smith](smith-2017.md)` as `[[smith-2017|Smith]]`,
    so every step after this one has one kind of link. Web addresses, anchors
    and images stay as they are.
-4. **Strip block IDs** (`stripBlockIds`). `^abc123` at the end of a line, or on
+5. **Strip block IDs** (`stripBlockIds`). `^abc123` at the end of a line, or on
    a line of its own.
-5. **Drop plugin blocks** (`dropPluginBlocks`). Fenced `dataview`,
+6. **Drop plugin blocks** (`dropPluginBlocks`). Fenced `dataview`,
    `dataviewjs`, `tasks`, `query` and `base` blocks, because an export would
    show only their query.
-6. **Strip tags** (`stripTags`). A line of tags goes, line and all. A tag in a
+7. **Strip tags** (`stripTags`). A line of tags goes, line and all. A tag in a
    sentence stays as its word: `#project/alpha` is "project/alpha".
-7. **Check the citations** (`missingKeys`), on the note as written, before any
+8. **Check the citations** (`missingKeys`), on the note as written, before any
    link is pointed at its key. See [Citations](https://codeberg.org/BW20/obsidian-due-credit/src/branch/main/docs/citations.md#the-check-before-an-export) in Due Credit.
-8. **Rewrite footnotes** (`footnotes`) the way pandoc reads them, which isn't
+9. **Rewrite footnotes** (`footnotes`) the way pandoc reads them, which isn't
    always how Obsidian does: a definition gets a blank line before it, a
    reference gets the spelling of its definition, and a label defined twice
    keeps its first definition.
-9. **Point links to paper notes at their keys** (`citeByKey`).
-10. **Lift headings** (`liftHeadings`). A leading H1 becomes the title and
+10. **Point links to paper notes at their keys** (`citeByKey`).
+11. **Lift headings** (`liftHeadings`). A leading H1 becomes the title and
     every other heading moves up a level, unless the note uses H1 for its own
     sections further down.
-11. **Resolve images** (`imageLinks`, then `imageEmbeds`). A markdown image
+12. **Resolve images** (`imageLinks`, then `imageEmbeds`). A markdown image
     of a file in the vault, `![A chart](figure.png)`, and an embed,
     `![[figure.png|300]]`, both become a markdown image of the file Obsidian
     would show, the second 300 pixels wide; `![[figure.png|A chart|300]]` is

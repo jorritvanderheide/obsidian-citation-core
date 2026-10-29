@@ -11,7 +11,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
   notes, and listed them in the check. A link in a table no longer splits its
   cell, a path with parentheses is read whole, and an image inside a link, a
   footnote, an escaped bracket and math are left alone.
-
+- A backslash before a space exports as written, so a quote ending in a
+  Windows path like `C:\temp\` keeps its last backslash. Pandoc read one there
+  as a space that doesn't break.
 ## 0.3.1
 
 - Pandoc arguments let `+RTS` through again, as before 0.3.0. Refusing it

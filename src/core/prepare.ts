@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, wikilinked, wikilinks } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, wikilinked, wikilinks } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -99,7 +99,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	};
 
 	const { yaml, body } = splitFrontmatter(text);
-	const prose = stripTags(dropPluginBlocks(stripBlockIds(wikilinked(stripComments(body)))));
+	const prose = stripTags(dropPluginBlocks(stripBlockIds(wikilinked(literalBackslashes(stripComments(body))))));
 	const targets = wikilinks(prose).map(({ target, words }) => ({ target, words, linkpath: linkpathOf(target).trim() }));
 	const check = (named: (link: { target: string; linkpath: string }) => string | null) =>
 		options.keys ? missingKeys(targets, named, options.keys) : [];

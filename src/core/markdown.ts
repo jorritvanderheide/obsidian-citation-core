@@ -441,6 +441,16 @@ function outsideMath(prose: string, change: (text: string) => string): string {
 }
 
 /**
+ * Every backslash before a space or a tab written so it shows, `\\`. Obsidian
+ * shows a backslash there as it is, and pandoc reads one as a space that
+ * doesn't break: `C:\temp\` before a quote's citation lost its backslash. A
+ * backslash that is already escaped, and code and math, are left alone.
+ */
+export function literalBackslashes(text: string): string {
+	return outsideCode(text, (prose) => outsideMath(prose, (part) => part.replace(/(?<!\\)((?:\\\\)*)\\(?=[ \t])/g, '$1\\\\')));
+}
+
+/**
  * Every Markdown link to a note in the vault, as the wikilink Obsidian takes it
  * for: `[Smith](smith-2017.md)` is `[[smith-2017|Smith]]`. Obsidian writes a
  * link either way, as its "Use [[Wikilinks]]" setting says, and reads both
