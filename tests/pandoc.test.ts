@@ -7,7 +7,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
 import { bibKeys, keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
-import { footnotes } from '../src/core/markdown';
+import { footnotes, wikilinked } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
 
 function installed(program = 'pandoc'): boolean {
@@ -399,6 +399,10 @@ describe.skipIf(!installed())('a markdown link', () => {
 
 	it('with a scheme stays a link, and a wikilink with a colon becomes its words', () => {
 		expect(markdown('[zotero](zotero://select/items/ABC) and [[Meeting: notes]]\n')).toBe('[zotero](zotero://select/items/ABC) and Meeting: notes\n');
+	});
+
+	it('to a note cites in a paragraph, with the pipe wikilinked writes', () => {
+		expect(markdown(wikilinked('As [Bob, p. 6](b.md "Bob") and [the idea](My%20idea) show.\n'))).toMatch(/^As \(B 2025, 6\) and the idea show\.\n/);
 	});
 });
 

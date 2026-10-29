@@ -12,8 +12,11 @@ new step goes there, in its place in the order.
    to the end of the note, to be safe.
 3. **Make Markdown links wikilinks** (`wikilinked`). Obsidian writes a link to a
    note either way, and reads `[Smith](smith-2017.md)` as `[[smith-2017|Smith]]`,
-   so every step after this one has one kind of link. Web addresses, anchors
-   and images stay as they are.
+   so every step after this one has one kind of link. A path without an
+   extension is a note too, as Obsidian reads it, and a title is dropped. The
+   pipe is written `\|`, which holds in a table row and reads as `|`
+   everywhere else. Web addresses, anchors, folders, other files and images
+   stay as they are.
 4. **Strip block IDs** (`stripBlockIds`). `^abc123` at the end of a line, or on
    a line of its own.
 5. **Drop plugin blocks** (`dropPluginBlocks`). Fenced `dataview`,

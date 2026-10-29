@@ -78,7 +78,7 @@ describe('prepare', () => {
 	it('points a Markdown link to a paper note at its key, and checks it, as a wikilink', () => {
 		const keys = new Set(['jones/2019']);
 		const { markdown, missing } = prepare('As [Jones](jones-2019.md) and [Lee](lee2020.md) show.\n', vault, { ...options, keys });
-		expect(markdown).toContain('[[jones/2019|Jones]]');
+		expect(markdown).toContain('[[jones/2019\\|Jones]]');
 		expect(missing.unresolved).toEqual(['lee2020']);
 	});
 

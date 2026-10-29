@@ -392,25 +392,39 @@ describe('wikilinked', () => {
 	// Obsidian writes a link to a note either way, as its "Use [[Wikilinks]]"
 	// setting says, and reads both alike.
 	it('makes a Markdown link to a file in the vault the wikilink Obsidian reads it as', () => {
-		expect(wikilinked('See [Smith](smith-2017.md) and [the claim](Literature/a.md#Claim).')).toBe('See [[smith-2017|Smith]] and [[Literature/a#Claim|the claim]].');
-		expect(wikilinked('[Lee](<Literature/Lee 2020.md>) and [Ann](Literature/Ann%20Marsh.md)')).toBe('[[Literature/Lee 2020|Lee]] and [[Literature/Ann Marsh|Ann]]');
+		expect(wikilinked('See [Smith](smith-2017.md) and [the claim](Literature/a.md#Claim).')).toBe('See [[smith-2017\\|Smith]] and [[Literature/a#Claim\\|the claim]].');
+		expect(wikilinked('[Lee](<Literature/Lee 2020.md>) and [Ann](Literature/Ann%20Marsh.md)')).toBe('[[Literature/Lee 2020\\|Lee]] and [[Literature/Ann Marsh\\|Ann]]');
 	});
 
-	it('leaves a web address, an anchor, an image, code and a link with a title alone', () => {
-		const kept = '[site](https://example.org/a.md) [z](zotero://select/x) [up](#Intro) ![A chart](figure.png) `[x](y.md)` [t](a.md "title")';
+	it('reads a path without an extension as a note, as Obsidian does', () => {
+		expect(wikilinked('[u](t) and [Lee](Literature/Lee%202020#Claim) and [v1](notes/v1.2%20draft)')).toBe('[[t\\|u]] and [[Literature/Lee 2020#Claim\\|Lee]] and [[notes/v1.2 draft\\|v1]]');
+	});
+
+	it('drops a title, and reads brackets in the words one level deep', () => {
+		expect(wikilinked('[t](a.md "title") [s](b \'other\') [r](<c d.md> (third))')).toBe('[[a\\|t]] [[b\\|s]] [[c d\\|r]]');
+		expect(wikilinked('[d [e] f](g.md) and [see [1]](h)')).toBe('[[g\\|d [e] f]] and [[h\\|see [1]]]');
+	});
+
+	it('reads a link after an escaped backslash, which an odd run of them escapes', () => {
+		expect(wikilinked('\\\\[x](y.md) \\[x](y.md) \\\\\\[x](y.md)')).toBe('\\\\[[y\\|x]] \\[x](y.md) \\\\\\[x](y.md)');
+	});
+
+	it('leaves a web address, an anchor, an image and code alone', () => {
+		const kept = '[site](https://example.org/a.md) [z](zotero://select/x) [up](#Intro) ![A chart](figure.png) `[x](y.md)`';
 		expect(wikilinked(kept)).toBe(kept);
 		expect(wikilinked('```\n[x](y.md)\n```\n')).toBe('```\n[x](y.md)\n```\n');
 	});
 });
 
 describe('wikilinked, on what is no link to a note', () => {
-	it('writes the pipe a table row needs, and reads parentheses in a path', () => {
+	it('writes the pipe a table row needs, also in a row without a leading pipe, and reads parentheses in a path', () => {
 		expect(wikilinked('| [Smith](smith-2017.md) | x |')).toBe('| [[smith-2017\\|Smith]] | x |');
-		expect(wikilinked('[S](Literature/Smith%20(2017)%20Archive.md)')).toBe('[[Literature/Smith (2017) Archive|S]]');
+		expect(wikilinked('a | [Smith](smith-2017.md)')).toBe('a | [[smith-2017\\|Smith]]');
+		expect(wikilinked('[S](Literature/Smith%20(2017)%20Archive.md)')).toBe('[[Literature/Smith (2017) Archive\\|S]]');
 	});
 
 	it('leaves a link to anything but a note alone, so the check never lists it', () => {
-		const kept = '[site](example.com) [d](folder/) [r](files/report.pdf) [u](t)';
+		const kept = '[site](example.com) [d](folder/) [r](files/report.pdf) [p](scan.PNG#page=2)';
 		expect(wikilinked(kept)).toBe(kept);
 	});
 
@@ -420,7 +434,7 @@ describe('wikilinked, on what is no link to a note', () => {
 	});
 
 	it('leaves a link alone whose path decodes to what a wikilink can not hold', () => {
-		const kept = '[a](x%7Cy.md) [b](x%5D.md) [c](a%23b.md) [d [e] f](g.md)';
+		const kept = '[a](x%7Cy.md) [b](x%5D.md) [c](a%23b.md) [d [e [f]]](g.md)';
 		expect(wikilinked(kept)).toBe(kept);
 	});
 });

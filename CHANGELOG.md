@@ -18,6 +18,12 @@ Each version is a tag, and a plugin pins only a tagged commit.
   doubled backslashes in a wikilink's target and alias, in indented code and
   in raw HTML. To show a backslash before a space, write `\\`, as Obsidian
   shows it too.
+- A Markdown link to a note without `.md`, `[Smith](smith-2017)`, is read as a
+  link to that note, as Obsidian reads it, and so is one with a title or with
+  brackets in its words, `[see [1]](smith-2017.md "Smith")`. One after an
+  escaped backslash, `\\[x](y.md)`, is read too. The pipe of the wikilink it
+  becomes is always `\|`, so a link in a table row without a leading `|` no
+  longer splits its cell.
 
 ## 0.4.0
 
