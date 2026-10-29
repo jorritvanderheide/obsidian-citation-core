@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.5.0
 
 - An installed pandoc is asked its version before it runs. One older than 3.0,
   which can't read a note, is refused with a message that says which version
