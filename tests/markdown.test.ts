@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, wikilinked, wikilinks } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, unshown, wikilinked, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -441,5 +441,57 @@ describe('wikilinks, with a bracket in the alias', () => {
 			{ target: 'k2', words: 'x]y' },
 		]);
 		expect(citeByKey('[[Old name|see [the] book]]', (linkpath) => (linkpath === 'Old name' ? 'marsh2024' : null))).toBe('[[marsh2024|see [the] book]]');
+	});
+});
+
+describe('unshown', () => {
+	const note = [
+		'> [!tip]- Fold me',
+		'> A ==highlight== and $E=mc^2$, and ==another==.',
+		'',
+		'> [!warning]',
+		'> > [!note] Inside',
+		'',
+		'![[bed.png|A bed|300]] ![[plan.png|200x100]] ![A chart|300](chart.png) ![[photo.png|A photo]]',
+		'',
+		'![[Other note]] ![[Other note#Why]] and [[#Method]], [[#^abc]], [[Other note#Why]].',
+		'',
+		'$$',
+		'\\int_0^1 x\\,dx',
+		'$$',
+		'',
+		'```mermaid',
+		'graph TD; A-->B',
+		'```',
+		'',
+		'> ```dataview',
+		'> TABLE file.name',
+		'> ```',
+		'',
+	].join('\n');
+
+	it('lists each kind a post in Markdown shows otherwise, each as written, once, in order', () => {
+		expect(unshown(note, 'markdown')).toEqual([
+			{ kind: 'callout', written: ['[!tip]- Fold me', '[!warning]', '[!note] Inside'] },
+			{ kind: 'highlight', written: ['==highlight==', '==another=='] },
+			{ kind: 'width', written: ['![[bed.png|A bed|300]]', '![[plan.png|200x100]]', '![A chart|300](chart.png)'] },
+			{ kind: 'math', written: ['$E=mc^2$', '$$\n\\int_0^1 x\\,dx\n$$'] },
+			{ kind: 'mermaid', written: ['graph TD; A-->B'] },
+			{ kind: 'embed', written: ['![[Other note]]', '![[Other note#Why]]'] },
+			{ kind: 'plugin block', written: ['TABLE file.name'] },
+			{ kind: 'link within', written: ['[[#Method]]', '[[#^abc]]'] },
+		]);
+	});
+
+	it('leaves out highlights and widths for HTML, which keeps them', () => {
+		expect(unshown(note, 'html').map((each) => each.kind)).toEqual(['callout', 'math', 'mermaid', 'embed', 'plugin block', 'link within']);
+	});
+
+	it('reads nothing in code, and lists nothing for a note with none of them', () => {
+		expect(unshown('`==a==` and `[[#b]]`\n\n```\n> [!tip]\n$x$\n```\n\n> A quote, and a == b.\n', 'markdown')).toEqual([]);
+	});
+
+	it('names a block with nothing inside by its opening line', () => {
+		expect(unshown('```mermaid\n```\n', 'markdown')).toEqual([{ kind: 'mermaid', written: ['```mermaid'] }]);
 	});
 });

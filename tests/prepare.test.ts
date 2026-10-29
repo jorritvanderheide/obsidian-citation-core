@@ -39,6 +39,7 @@ describe('prepare', () => {
 			markdown: ['', '# Argument', '', 'As [[marsh2024|Marsh, p. 4]] shows.', '', '![](<C:/v/Attachments/figure.png>){width=300px}', ''].join('\n'),
 			metadata: { title: 'On archives', 'reference-section-title': 'References', author: 'Ann' },
 			missing: { papers: [], unresolved: [], unpublished: [] },
+			unshown: [],
 		});
 	});
 
@@ -115,9 +116,20 @@ describe('a post', () => {
 		expect(prepare('# Title\n\nText.', draftVault, post).metadata).toEqual({ title: 'Title' });
 	});
 
+	it('lists what it won\'t show as Obsidian does, from the note without its comments', () => {
+		const note = '---\ntitle: Old\n---\n> [!tip] Title\n> ==Marked== %%==hidden== [[#Hidden]]%% and [[#Method]].\n';
+		expect(prepare(note, draftVault, post).unshown).toEqual([
+			{ kind: 'callout', written: ['[!tip] Title'] },
+			{ kind: 'highlight', written: ['==Marked=='] },
+			{ kind: 'link within', written: ['[[#Method]]'] },
+		]);
+		expect(prepare(note, draftVault, { ...post, post: 'html' }).unshown.map((each) => each.kind)).toEqual(['callout', 'link within']);
+	});
+
 	it('leaves links alone, and lists nothing, for a document', () => {
 		const { markdown, missing } = prepare('[[My idea]] and [[Draft]].', draftVault, options);
 		expect(markdown).toBe('[[My idea]] and [[Draft]].');
 		expect(missing.unpublished).toEqual([]);
+		expect(prepare('==Marked==', draftVault, options).unshown).toEqual([]);
 	});
 });

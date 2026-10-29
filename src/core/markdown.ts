@@ -6,6 +6,7 @@
 // are only characters.
 
 import { keyOf, linkpathOf, renameInAlias } from './citations';
+import type { Post } from './document';
 
 /** A run of the note that is code, or that is not. */
 export interface Segment {
@@ -549,4 +550,75 @@ export function wikilinks(text: string): { target: string; words: string }[] {
 				return { target, words: match[2]?.trim() || name.trim() || ref.replace(/^\^/, '') };
 			}),
 		);
+}
+
+/** Something in a note that a post doesn't show as Obsidian does, of one of these kinds. */
+export type UnshownKind = 'callout' | 'highlight' | 'width' | 'math' | 'mermaid' | 'embed' | 'plugin block' | 'link within';
+
+export interface Unshown {
+	kind: UnshownKind;
+	/** Each one as written, once, in the order of the note. */
+	written: string[];
+}
+
+const UNSHOWN_ORDER: UnshownKind[] = ['callout', 'highlight', 'width', 'math', 'mermaid', 'embed', 'plugin block', 'link within'];
+// A callout's first line, from its marker, in any number of quotes.
+const CALLOUT = /^(?:[ \t]*>)+[ \t]*(\[![^\]\n]+\][+-]?.*?)[ \t]*$/gm;
+const HIGHLIGHT = /==(?=\S)(?:[^=\n]|=(?!=))*?\S==/g;
+const MERMAID = /^(?:[ \t]*>)*[ \t]*(?:`{3,}|~{3,})[ \t]*mermaid(?![\w-])/;
+// A width at the end of an embed's label or an image's description, `|300` or `|300x200`.
+const WIDTH = /\|\s*\d+(?:x\d+)?\s*$/;
+
+/**
+ * What in `text`, a note without its comments, a post shows otherwise than
+ * Obsidian does, or not at all, so that a plugin can say so before it sends
+ * the post. Only the kinds the note has, in the order of `UnshownKind`.
+ *
+ * - A callout is a quote, its title in bold: its kind and its folding are
+ *   lost (`obsidian.lua`).
+ * - A highlight is plain text, and an image's width is lost, in Markdown,
+ *   which has neither. HTML keeps both.
+ * - Math, and a Mermaid diagram, are shown as written, as code: a site draws
+ *   neither.
+ * - An embedded note, PDF or canvas is left out (`imageEmbeds`), and so is a
+ *   plugin's block (`dropPluginBlocks`).
+ * - A link to a heading or a block in the note itself, `[[#Method]]`, is its
+ *   words: a site gives its headings ids of its own.
+ */
+export function unshown(text: string, post: Post): Unshown[] {
+	const found = new Map<UnshownKind, string[]>();
+	const add = (kind: UnshownKind, written: string) => {
+		const list = found.get(kind) ?? [];
+		if (!list.includes(written)) list.push(written);
+		found.set(kind, list);
+	};
+	const unquoted = (line: string) => line.replace(/^(?:[ \t]*>)*/, '').trim();
+
+	for (const segment of segments(text, false)) {
+		if (!segment.code) {
+			for (const match of segment.text.matchAll(CALLOUT)) add('callout', match[1] ?? '');
+			continue;
+		}
+		// A block by its first line inside, or its opening line when it has none.
+		const [opening = '', ...lines] = segment.text.split('\n');
+		const kind = MERMAID.test(opening) ? 'mermaid' : PLUGIN_BLOCK.test(opening) ? 'plugin block' : null;
+		if (kind !== null) add(kind, lines.map(unquoted).find((line) => line !== '' && !/^(?:`{3,}|~{3,})$/.test(line)) ?? unquoted(opening));
+	}
+	for (const segment of segments(text)) {
+		if (segment.code) continue;
+		segment.text.split(MATH).forEach((part, at) => {
+			if (at % 2 === 1) {
+				add('math', part);
+				return;
+			}
+			if (post === 'markdown') for (const match of part.matchAll(HIGHLIGHT)) add('highlight', match[0]);
+			for (const [embed, target = '', label = ''] of part.matchAll(EMBED)) {
+				if (!isImage(target)) add('embed', embed);
+				else if (post === 'markdown' && WIDTH.test(`|${label}`)) add('width', embed);
+			}
+			if (post === 'markdown') for (const [image, description = ''] of part.matchAll(MARKDOWN_IMAGE)) if (WIDTH.test(description)) add('width', image);
+			for (const [link, target = ''] of part.matchAll(LINK)) if (linkpathOf(target).trim() === '') add('link within', link);
+		});
+	}
+	return UNSHOWN_ORDER.filter((kind) => found.has(kind)).map((kind) => ({ kind, written: found.get(kind) ?? [] }));
 }

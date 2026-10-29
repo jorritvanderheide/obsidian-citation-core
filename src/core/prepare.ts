@@ -2,7 +2,7 @@
 import { inFolder } from './paths';
 import { keyOf, linkpathOf, missingKeys, propertyKey } from './citations';
 import { documentMetadata, postMetadata, type Post } from './document';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, wikilinked, wikilinks } from './markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, wikilinked, wikilinks, unshown, type Unshown } from './markdown';
 
 /** What a link resolves to, from the note being exported. */
 export interface Linked {
@@ -50,6 +50,11 @@ export interface Prepared {
 	metadata: Record<string, unknown>;
 	/** Links about to lose their citation, as the keys they name. */
 	missing: Missing;
+	/**
+	 * For a post, what in the note it won't show as Obsidian does (`unshown`).
+	 * Always empty for a document.
+	 */
+	unshown: Unshown[];
 }
 
 export interface Missing {
@@ -88,6 +93,9 @@ export interface Missing {
  * so the check lists a link to no note at all as well: Insert citation links a
  * paper that has no note by its key. Only a link to a note of your own is
  * never listed.
+ *
+ * For a post, what it won't show as Obsidian does is listed too
+ * (`unshown`), from the note as written, without its comments.
  */
 export function prepare(text: string, vault: Vault, options: Options): Prepared {
 	const resolve = (linkpath: string) => (linkpath === '' ? null : vault.resolve(linkpath));
@@ -99,7 +107,8 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	};
 
 	const { yaml, body } = splitFrontmatter(text);
-	const prose = stripTags(dropPluginBlocks(stripBlockIds(wikilinked(literalBackslashes(stripComments(body))))));
+	const visible = stripComments(body);
+	const prose = stripTags(dropPluginBlocks(stripBlockIds(wikilinked(literalBackslashes(visible)))));
 	const targets = wikilinks(prose).map(({ target, words }) => ({ target, words, linkpath: linkpathOf(target).trim() }));
 	const check = (named: (link: { target: string; linkpath: string }) => string | null) =>
 		options.keys ? missingKeys(targets, named, options.keys) : [];
@@ -118,7 +127,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	const metadata = options.post
 		? postMetadata(frontmatter, title, options.name, options.noteStyle, options.post)
 		: documentMetadata(frontmatter, title, options.name, options.noteStyle);
-	return { markdown, metadata, missing };
+	return { markdown, metadata, missing, unshown: options.post ? unshown(visible, options.post) : [] };
 }
 
 /**

@@ -110,6 +110,13 @@ its post (`linkPosts`, after `citeByKey`). A link to a note of your own that
 has no post is listed in `missing.unpublished`, which is read from the note as
 written, like the other checks.
 
+`unshown` lists what the post won't show as Obsidian does, read from the note
+without its comments, so that a plugin can say so before it sends: callouts,
+which are quotes under their title in bold, math and Mermaid diagrams, shown
+as written in code, embedded notes and plugin blocks, which are left out, and
+links to a heading or block in the note itself, which are their words. In
+Markdown, highlights and image widths too, which HTML keeps.
+
 `postArgs` reads the note the same way. It moves every heading a level down,
 because the site shows the title as the page's one level 1 heading, and makes
 one of two things:
@@ -122,3 +129,7 @@ one of two things:
   bibliography it reads the works' DOIs from.
 - **HTML**, finished, for any other site: citations as words, and the
   reference list at the end, under its heading.
+
+In both, `pandoc/obsidian.lua` writes math as written, in code, and math in a
+paragraph of its own as a code block: a site draws no math, and GitHub's
+Markdown would write it in a form only GitHub draws. A document keeps it.

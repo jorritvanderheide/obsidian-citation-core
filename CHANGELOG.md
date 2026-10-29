@@ -4,6 +4,17 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
+## Unreleased
+
+- `prepare` lists what a post won't show as Obsidian does, as `unshown`, so a
+  plugin can say so before it sends: callouts, math, Mermaid diagrams,
+  embedded notes, plugin blocks and links within the note, and in Markdown,
+  highlights and image widths.
+- A post shows math as written, in code, and math in a paragraph of its own
+  as a code block. In Markdown it had dollar signs around code, which no site
+  but GitHub draws, and in HTML it was spelled out in letters and signs as far
+  as they went. Exports keep their math.
+
 ## 0.3.2
 
 - A Markdown link is read as a wikilink only when it points at a note, a `.md`

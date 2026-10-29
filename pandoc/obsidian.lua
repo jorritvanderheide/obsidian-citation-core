@@ -64,8 +64,14 @@ end
 --- figures, gets the image and its caption as two paragraphs, the caption in
 --- italics: how a site finds a figure in a post (In the Open's
 --- `docs/micropub.md`, Links and images).
+---
+--- A post's math alone in its paragraph, the code `Math` made of it, is a
+--- code block.
 function Para(para)
   local inlines = para.content
+  if #inlines == 1 and inlines[1].t == 'Code' and inlines[1].classes:includes('display-math') then
+    return pandoc.CodeBlock(inlines[1].text)
+  end
   if #inlines ~= 3 or inlines[1].t ~= 'Image' or inlines[3].t ~= 'Emph' then return nil end
   if inlines[2].t ~= 'SoftBreak' and inlines[2].t ~= 'LineBreak' then return nil end
   if FORMAT == 'markdown' then return nil end
@@ -74,4 +80,28 @@ function Para(para)
     return { pandoc.Para({ image }), pandoc.Para({ pandoc.Emph(caption) }) }
   end
   return pandoc.Figure({ pandoc.Plain({ image }) }, { long = { pandoc.Plain(caption) } })
+end
+
+--- Math, `$…$` or `$$…$$`, in a post: as written, in code. A site draws no
+--- math. GitHub's Markdown would write it in a form only GitHub draws, and
+--- HTML would spell out what it could in letters and signs and leave the rest
+--- as LaTeX. Math on its own, `$$` in a paragraph of its own, is a code block
+--- (`Para`). A document keeps its math.
+function Math(math)
+  if FORMAT ~= 'gfm' and FORMAT ~= 'html' then return nil end
+  if math.mathtype == 'InlineMath' then return pandoc.Code('$' .. math.text .. '$') end
+  return pandoc.Code('$$' .. math.text .. '$$', pandoc.Attr('', { 'display-math' }))
+end
+
+--- What `Math` marked math on its own with, gone from math inside a
+--- paragraph, after `Para` has read it.
+function Pandoc(doc)
+  if FORMAT ~= 'gfm' and FORMAT ~= 'html' then return nil end
+  return doc:walk({
+    Code = function(code)
+      if not code.classes:includes('display-math') then return nil end
+      code.classes = {}
+      return code
+    end,
+  })
 end

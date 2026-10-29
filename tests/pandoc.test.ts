@@ -245,6 +245,10 @@ describe.skipIf(!installed())('obsidian.lua', () => {
 		expect(markdown('> [!note]- My *title*\n> Body [[a]].\n')).toBe('> **My *title***\\\n> Body (A 2024).\n\nA, Ann. 2024. *First*.\n');
 	});
 
+	it('keeps math in a document, which draws it', () => {
+		expect(markdown('Inline $E=mc^2$.\n\n$$\n\\int_0^1 x\\,dx\n$$\n')).toBe('Inline $E=mc^2$.\n\n$$\\int_0^1 x\\,dx$$\n');
+	});
+
 	it('drops the marker of a callout without a title, and leaves a plain quote alone', () => {
 		expect(markdown('> [!tip]\n> Untitled.\n\n> A quote.\n')).toBe('> Untitled.\n\n> A quote.\n');
 		expect(markdown('> [!warning] Only a title\n')).toBe('> **Only a title**\n');
@@ -541,6 +545,13 @@ describe.skipIf(!installed())('a post', () => {
 		const figure = 'Before.\n\n![Wooden bed](<https://bw20.nl/media/bed.png>)\n*A raised bed in March.*\n\nAfter.\n';
 		expect(post('markdown', figure).text).toBe('Before.\n\n![Wooden bed](https://bw20.nl/media/bed.png)\n\n*A raised bed in March.*\n\nAfter.\n');
 		expect(post('html', figure).text).toContain('<figure>\n<img src="https://bw20.nl/media/bed.png" alt="Wooden bed" />\n<figcaption>A raised bed in March.</figcaption>\n</figure>');
+	});
+
+	it('shows math as written, in code, and math on its own as a code block', () => {
+		const math = 'Inline $E=mc^2$, and $$x$$ in a sentence.\n\n$$\n\\int_0^1 x\\,dx\n$$\n';
+		expect(post('markdown', math).text).toBe('Inline `$E=mc^2$`, and `$$x$$` in a sentence.\n\n    $$\\int_0^1 x\\,dx$$\n');
+		const html = post('html', math).text;
+		expect(html).toContain('<p>Inline <code>$E=mc^2$</code>, and <code>$$x$$</code> in a sentence.</p>\n<pre><code>$$\\int_0^1 x\\,dx$$</code></pre>');
 	});
 
 	it('as Markdown without citations, has none to take out', () => {
