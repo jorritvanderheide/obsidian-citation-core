@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { BUILT_IN } from '../src/core/built-in';
 import { keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences } from '../src/core/document';
 import { footnotes } from '../src/core/markdown';
@@ -35,6 +36,16 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 // one, which keeps vitest's worker from answering vitest for minutes on end.
 // A turn of the event loop before each test lets it.
 beforeEach(() => new Promise((resolve) => setImmediate(resolve)));
+
+// The expected output is one pandoc's: citeproc formats some entries
+// differently from one version to the next. A run against another pandoc says
+// so here, before its differences turn up below looking like bugs.
+describe.skipIf(!installed())('the pandoc these tests run against', () => {
+	it(`is pandoc ${BUILT_IN.version}, the built-in pandoc's version and CI's`, () => {
+		const found = execFileSync('pandoc', ['--version'], { encoding: 'utf8' }).split('\n')[0];
+		expect(found, `Run the tests in nix develop, which has pandoc ${BUILT_IN.version}`).toBe(`pandoc ${BUILT_IN.version}`);
+	});
+});
 
 /** The body of a one-paragraph note, cited and rendered to plain text. */
 function cite(markdown: string): string {
@@ -173,8 +184,18 @@ describe.skipIf(!installed())('obsidian.lua', () => {
 		expect(markdown('> [!warning] Only a title\n')).toBe('> **Only a title**\n');
 	});
 
-	it('makes an image with an italic line under it a figure, with that caption, and leaves an image alone as it is', () => {
-		expect(markdown('![Wooden bed](bed.png){width=300px}\n*A raised bed in March.*\n')).toBe('![A raised bed in March.](bed.png){alt="Wooden bed" width="300px"}\n');
+	it('makes an image with an italic line under it a figure, with that caption, in every format but Markdown', () => {
+		const output = join(dir, 'figure.html');
+		const args = pandocArgs('md', { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: false, referenceDoc: null, extra: [], resourcePath: dir, output });
+		execFileSync('pandoc', [...args.filter((arg) => !arg.startsWith('--to=') && !arg.startsWith('--template=')), '--to=html'], { input: '![Wooden bed](bed.png)\n*A raised bed in March.*\n' });
+		expect(readFileSync(output, 'utf8')).toContain('<figure>\n<img src="bed.png" alt="Wooden bed" />\n<figcaption>A raised bed in March.</figcaption>\n</figure>');
+	});
+
+	// Markdown has figures only in pandoc's own, and only since a pandoc newer
+	// than many people have installed: an older one left the caption out
+	// altogether. The image and its italic line read the same everywhere.
+	it('keeps the image and its caption in italics in a Markdown export, as written, and leaves an image alone as it is', () => {
+		expect(markdown('![Wooden bed](bed.png){width=300px}\n*A raised bed in March.*\n')).toBe('![Wooden bed](bed.png){width="300px"}\n\n*A raised bed in March.*\n');
 		expect(markdown('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n')).toBe('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n');
 		expect(markdown('![Wooden bed](bed.png) and *words*\n')).toBe('![Wooden bed](bed.png) and *words*\n');
 	});
@@ -182,7 +203,7 @@ describe.skipIf(!installed())('obsidian.lua', () => {
 	it('reads the caption under a line break too, as Obsidian has it with strict line breaks off', () => {
 		const output = join(dir, 'caption.md');
 		execFileSync('pandoc', pandocArgs('md', { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: true, referenceDoc: null, extra: [], resourcePath: dir, output }), { input: '![Wooden bed](bed.png)\n*A raised bed.*\n' });
-		expect(readFileSync(output, 'utf8')).toBe('![A raised bed.](bed.png){alt="Wooden bed"}\n');
+		expect(readFileSync(output, 'utf8')).toBe('![Wooden bed](bed.png)\n\n*A raised bed.*\n');
 	});
 
 	it('reads a callout inside a callout, without the blank line pandoc wants', () => {

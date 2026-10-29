@@ -58,15 +58,17 @@ end
 --- and this is how one looks there. An image without one stays an image, since
 --- its alt text is for whoever can't see it, and no caption.
 ---
---- GitHub's Markdown has no figures, so a post in it keeps the image and its
---- caption as two paragraphs, the caption in italics: how a site finds a
---- figure in a post (In the Open's `docs/micropub.md`, Links and images).
+--- Markdown keeps the image and its caption as two paragraphs, the caption in
+--- italics, as it was written. GitHub's Markdown, a post's, has no figures,
+--- and that is how a site finds one (In the Open's `docs/micropub.md`, Links
+--- and images). Pandoc's own has them only in a recent pandoc, and an older one
+--- left the caption out of an export altogether.
 function Para(para)
   local inlines = para.content
   if #inlines ~= 3 or inlines[1].t ~= 'Image' or inlines[3].t ~= 'Emph' then return nil end
   if inlines[2].t ~= 'SoftBreak' and inlines[2].t ~= 'LineBreak' then return nil end
   local image, caption = inlines[1], inlines[3].content
-  if FORMAT == 'gfm' then
+  if FORMAT == 'markdown' or FORMAT == 'gfm' then
     return { pandoc.Para({ image }), pandoc.Para({ pandoc.Emph(caption) }) }
   end
   return pandoc.Figure({ pandoc.Plain({ image }) }, { long = { pandoc.Plain(caption) } })
