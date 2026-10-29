@@ -405,6 +405,14 @@ describe.skipIf(!installed())('a post', () => {
 		]);
 	});
 
+	it('shows an image alone in its paragraph without its alt text as a caption, as Obsidian does', () => {
+		const image = 'Before.\n\n![A raised bed](<https://bw20.nl/media/bed.png>)\n\nAfter.\n';
+		expect(post('markdown', image).text).toBe('Before.\n\n![A raised bed](https://bw20.nl/media/bed.png)\n\nAfter.\n');
+		const html = post('html', image).text;
+		expect(html).toContain('<img src="https://bw20.nl/media/bed.png" alt="A raised bed" />');
+		expect(html).not.toContain('figcaption');
+	});
+
 	it('as Markdown without citations, has none to take out', () => {
 		const { text, references } = post('markdown', 'Just words.\n');
 		expect(text).toBe('Just words.\n');

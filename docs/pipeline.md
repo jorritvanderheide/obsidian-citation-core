@@ -84,9 +84,11 @@ its post (`linkPosts`, after `citeByKey`). A link to a note of your own that
 has no post is listed in `missing.unpublished`, which is read from the note as
 written, like the other checks.
 
-`postArgs` reads the note the same way. It moves every heading a level down,
-because the site shows the title as the page's one level 1 heading, and makes
-one of two things:
+`postArgs` reads the note the same way, with one exception: an image alone in
+its paragraph stays an image. For a document, pandoc makes it a figure with its
+alt text as the caption, which a site would show under the image, and Obsidian
+never does. It moves every heading a level down, because the site shows the
+title as the page's one level 1 heading, and makes one of two things:
 
 - **Markdown**, GitHub's without raw HTML, for a site that takes the
   references extension. With `link-citations`, each citation links to its

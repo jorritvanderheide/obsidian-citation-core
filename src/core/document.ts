@@ -366,11 +366,13 @@ export interface PostRun {
  * - HTML is finished for any site: citations as words, the reference list at
  *   the end, headed.
  * - Neither wraps lines: a site reflows the text itself.
+ * - An image alone in its paragraph stays an image. Pandoc would make it a
+ *   figure with its alt text as the caption, which Obsidian never shows.
  */
 export function postArgs(post: Post, run: PostRun): string[] {
 	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
 	const args = [
-		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header`,
+		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
 		`--metadata-file=${run.metadata}`,
 		`--lua-filter=${run.obsidian}`,
 		`--lua-filter=${run.filter}`,

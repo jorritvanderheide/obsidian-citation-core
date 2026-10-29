@@ -222,6 +222,7 @@ describe('a post', () => {
 		expect(markdown.indexOf('--citeproc')).toBeLessThan(markdown.indexOf('--lua-filter=p.lua'));
 		expect(markdown.indexOf('--lua-filter=p.lua')).toBeLessThan(markdown.indexOf('--lua-filter=a.lua'));
 		expect(markdown).toContain('--to=gfm-raw_html');
+		expect(markdown[0]).toMatch(/-implicit_figures$/);
 		expect(markdown).toContain('--metadata=references-out=r.json');
 		const html = postArgs('html', run);
 		expect(html).toContain('--to=html');
