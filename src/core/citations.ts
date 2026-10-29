@@ -7,6 +7,8 @@
 // side and the other has to follow; `tests/pandoc.test.ts` holds both to one
 // table of cases.
 
+import { inFolder } from './paths';
+
 /** `@article{key,` and every other entry type, as the filter's `read_bib` reads it. */
 const ENTRY = /^\s*@\w+\s*[{(]\s*([^,\s]+)\s*,/;
 
@@ -92,4 +94,21 @@ export function missingKeys<T>(targets: T[], keyFor: (target: T) => string | nul
 		if (key !== null && !keys.has(key)) missing.add(key);
 	}
 	return [...missing].sort();
+}
+
+/**
+ * What to say under the citation key property setting when no note in the
+ * vault has that property, or null when one does. Without it a link to a
+ * paper note cites only by the note's name, so the setting is likely to be
+ * misspelled, or the notes from somewhere that writes a property of its own.
+ */
+export function keyPropertyStatus(frontmatters: readonly unknown[], property: string): string | null {
+	if (frontmatters.some((frontmatter) => propertyKey(frontmatter, property) !== null)) return null;
+	return `No note in your vault has a ${property} property, so a link to a paper note only becomes a citation when the note is named for its key.`;
+}
+
+/** What to say under the papers folder setting when no note is in it, or null when one is. */
+export function papersFolderStatus(paths: readonly string[], folder: string): string | null {
+	if (paths.some((path) => inFolder(path, folder))) return null;
+	return `There are no notes in ${folder.replace(/\/+$/, '')}. Check the folder's name.`;
 }

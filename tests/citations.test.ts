@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bibKeys, keyOf, linkpathOf, missingKeys, propertyKey, renameInAlias } from '../src/core/citations';
+import { bibKeys, keyOf, keyPropertyStatus, linkpathOf, missingKeys, papersFolderStatus, propertyKey, renameInAlias } from '../src/core/citations';
 
 describe('bibKeys', () => {
 	it('reads every entry type, and nothing inside a field', () => {
@@ -83,5 +83,20 @@ describe('missingKeys', () => {
 
 	it('ignores links to anything that is not a paper', () => {
 		expect(missingKeys(['Notes/My idea'], keyFor, new Set())).toEqual([]);
+	});
+});
+
+describe('settings that must agree with the vault', () => {
+	it('says when no note has the key property, which only notes named for their key can do without', () => {
+		expect(keyPropertyStatus([{ citekey: 'marsh2024' }, undefined], 'citekey')).toBeNull();
+		expect(keyPropertyStatus([{ title: 'Care' }, undefined, { citekey: '  ' }], 'citekey')).toBe(
+			'No note in your vault has a citekey property, so a link to a paper note only becomes a citation when the note is named for its key.',
+		);
+	});
+
+	it('says when there are no notes in the papers folder', () => {
+		expect(papersFolderStatus(['Literature/marsh2024.md', 'Daily/x.md'], 'Literature')).toBeNull();
+		expect(papersFolderStatus(['Literature/marsh2024.md'], 'Literature/')).toBeNull();
+		expect(papersFolderStatus(['Literatures/marsh2024.md', 'Daily/x.md'], 'Literature')).toBe("There are no notes in Literature. Check the folder's name.");
 	});
 });
