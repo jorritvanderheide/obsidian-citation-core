@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentMetadata, inputFiles, lineBreaks, noteStyle, pandocArgs, postArgs, postMetadata, postProperties, readReferences, refused, splitArgs, styled, type Run } from '../src/core/document';
+import { bibliographiesIn, documentMetadata, inputFiles, lineBreaks, noteStyle, pandocArgs, postArgs, postMetadata, postProperties, readReferences, refused, splitArgs, styled, type Run } from '../src/core/document';
 
 describe('documentMetadata', () => {
 	it('takes the title from the heading first, then the property, then the name', () => {
@@ -89,6 +89,14 @@ describe('refused', () => {
 
 	it('reads the rest of a bundle after an option that takes a value as that value', () => {
 		expect(refused(['-Mdate=2024', '-Vdocumentclass=book', '-Lfilter-to.lua', '-T', 'dot', '-Ffoo'])).toBeNull();
+	});
+
+	// Pandoc hands what follows +RTS to the runtime it is built on, which can
+	// write files of its own: -S/path writes statistics there.
+	it('refuses options for the runtime pandoc runs on', () => {
+		expect(refused(['+RTS', '-S/tmp/x', '-RTS'])?.arg).toBe('+RTS');
+		expect(refused(['+RTS', '-S/tmp/x', '-RTS'])?.why).toContain('runtime');
+		expect(refused(['--toc', '+RTS'])?.arg).toBe('+RTS');
 	});
 });
 
@@ -258,5 +266,12 @@ describe('a post', () => {
 		]);
 		expect(() => readReferences('{}')).toThrow();
 		expect(() => readReferences('[{"text":"A."}]')).toThrow();
+	});
+});
+
+describe('bibliographiesIn', () => {
+	it('finds every bibliography your arguments give, however the option is written', () => {
+		expect(bibliographiesIn(['--toc', '--bibliography=/a.bib', '--bibliography', '/b.bib', '--biblio=/c.json', '-M', 'x=1'])).toEqual(['/a.bib', '/b.bib', '/c.json']);
+		expect(bibliographiesIn(['--toc', '--biblatex'])).toEqual([]);
 	});
 });

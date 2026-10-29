@@ -25,6 +25,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
   with "Use [[Wikilinks]]" off, is read as the wikilink it means. A link to a
   paper note under another name cites its key, a post links to a published
   note, and the check before an export lists one that won't cite.
+- Pandoc arguments also turn down `+RTS`, which gives options to the runtime
+  pandoc runs on, and one of those writes a file of its own.
+- For the plugins: `bibliographiesIn` finds every `--bibliography` in Pandoc
+  arguments, so a check can read their keys as well as the setting's.
 
 ## 0.2.0
 
