@@ -1,0 +1,43 @@
+# Checks on every push to main and every pull request. The repository lives
+# on Codeberg and is push-mirrored here, where this runs. The plugins run the
+# same checks when they move to a new commit; this says so before they do.
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+# Read-only unless a job asks for more.
+permissions:
+    contents: read
+
+jobs:
+    # Without pandoc, so the tests that need it are skipped here and run below.
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+              with:
+                  node-version: 24
+                  cache: 'npm'
+            - run: npm ci --ignore-scripts
+            - run: npm run typecheck
+            - run: npm run lint
+            - run: npm test
+
+    # The type check, the lint and every test, against the pandoc they expect
+    # and the built-in one, and npmDepsHash against package-lock.json.
+    nix:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+              with:
+                  persist-credentials: false
+            - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+            - run: nix flake check -L
