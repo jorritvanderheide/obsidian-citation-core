@@ -9,16 +9,16 @@
 
 import { inFolder } from './paths';
 
-/** `@article{key,` and every other entry type, as the filter's `read_bib` reads it. */
-const ENTRY = /^\s*@\w+\s*[{(]\s*([^,\s]+)\s*,/;
+/**
+ * `@article{key,` and every other entry type, as the filter's `read_bib` reads
+ * it: the @ opens a line, after spaces or tabs, and the key can be on the next.
+ */
+const ENTRY = /^[ \t\uFEFF]*@\w+\s*[{(]\s*([^,\s]+)\s*,/gm;
 
 /** Every entry key in a `.bib` file. */
 export function bibKeys(bib: string): Set<string> {
 	const keys = new Set<string>();
-	for (const line of bib.split(/\r?\n/)) {
-		const key = ENTRY.exec(line)?.[1];
-		if (key) keys.add(key);
-	}
+	for (const match of bib.matchAll(ENTRY)) if (match[1]) keys.add(match[1]);
 	return keys;
 }
 

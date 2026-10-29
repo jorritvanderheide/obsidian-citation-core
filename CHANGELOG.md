@@ -11,6 +11,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
   every export, words and all. LaTeX you wrote on purpose, like `\newpage`, now
   prints as text too: write it as a raw block, `` `\newpage`{=latex} ``, and
   it still reaches a PDF or LaTeX export.
+- An entry with its key on the line after the brace is read, so citing it
+  works. 0.2.0 turned an in-text citation of such an entry into plain text.
+- Two bibliographies, the setting's and one under Pandoc arguments, are both
+  read. Every wikilink citation came out as plain text with two.
 
 ## 0.2.0
 

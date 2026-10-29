@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
-import { keyOf, renameInAlias } from '../src/core/citations';
+import { bibKeys, keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
 import { footnotes } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
@@ -169,6 +169,20 @@ describe.skipIf(!installed())('a bare @word', () => {
 });
 
 describe.skipIf(!installed())('one rule, written twice', () => {
+	// An entry can have its key on the line after the brace, and pandoc can be
+	// given a list of bibliographies: in pandoc 3 that list is no MetaList.
+	it('reads an entry split over lines, and every bibliography given, as bibKeys and pandoc do', () => {
+		const split = join(dir, 'split.bib');
+		writeFileSync(split, '@article{\n  split,\n  author = {Split, Sam},\n  title = {T},\n  year = {2019}\n}\n');
+		expect([...bibKeys(readFileSync(split, 'utf8'))]).toEqual(['split']);
+		expect(filtered('[[split]]', split)?.key).toBe('split');
+		expect(filtered('As @split says', split)?.key).toBe('split');
+		const args = ['--from=markdown+wikilinks_title_after_pipe', `--lua-filter=${filter}`, `--bibliography=${bib}`, `--bibliography=${split}`, '--to=json'];
+		const json = JSON.parse(execFileSync('pandoc', args, { input: '[[a]] and [[split]]' }).toString()) as { blocks: { c: Inline[] }[] };
+		const cited = (json.blocks[0]?.c ?? []).filter((inline) => inline.t === 'Cite').map((inline) => (inline.c as [Citation[]])[0][0]?.citationId);
+		expect(cited).toEqual(['a', 'split']);
+	});
+
 	it.each(['a', 'Literature/a', 'Literature/a.md', 'a#p. 12', 'a#^block', '@a', 'Literature/@a.md#Claim', '@@a', 'a.pdf', 'ab', 'a.md.md', 'Notes/b a'])(
 		'[[%s]] is a citation in the filter exactly when keyOf names the key',
 		(target) => {

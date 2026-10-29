@@ -10,6 +10,10 @@ describe('bibKeys', () => {
 	it('reads the first entry after a byte order mark, as the filter does', () => {
 		expect([...bibKeys('\uFEFF@article{marsh2024,\n}\n')]).toEqual(['marsh2024']);
 	});
+
+	it('reads a key on the line after the brace, as pandoc does', () => {
+		expect([...bibKeys('@article{\n  split,\n  title = {T},\n}\n@book{\r\n\tcrlf ,\r\n}\n')]).toEqual(['split', 'crlf']);
+	});
 });
 
 describe('keyOf', () => {

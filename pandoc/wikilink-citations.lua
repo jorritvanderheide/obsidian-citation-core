@@ -62,16 +62,14 @@ local function read_bib(path)
     io.stderr:write("Couldn't open the bibliography at " .. path .. ". Check that the file is there and can be read.\n")
     return
   end
-  for line in file:lines() do
-    -- A byte order mark is no part of the first line. JavaScript's `\s`
-    -- matches it, so `bibKeys` reads that entry either way; Lua's `%s` does not.
-    line = line:gsub('^\239\187\191', '')
-    -- `@article{key,` and every other entry type. Anything indented or inside
-    -- a field cannot match, because the @ has to open the line.
-    local key = line:match('^%s*@%w+%s*[{(]%s*([^,%s]+)%s*,')
-    if key then keys[key] = true end
-  end
+  -- The whole file, since an entry can have its key on the line after the
+  -- brace, as pandoc reads it. A byte order mark is no part of the first line.
+  local text = file:read('a')
   file:close()
+  text = '\n' .. (text:gsub('^\239\187\191', ''))
+  -- `@article{key,` and every other entry type. Anything inside a field cannot
+  -- match, because the @ has to open a line, after spaces or tabs at most.
+  for key in text:gmatch('\n[ \t]*@%w+%s*[{(]%s*([^,%s]+)%s*,') do keys[key] = true end
 end
 
 --- The bibliographies pandoc was given, however they were given.
@@ -83,7 +81,8 @@ local function load(meta)
   local bibliography = meta.bibliography
   if not bibliography then return nil end
 
-  if bibliography.t == 'MetaList' then
+  -- In pandoc 3 a list of them is a List, not the MetaList of pandoc 2.
+  if bibliography.t == 'MetaList' or pandoc.utils.type(bibliography) == 'List' then
     for _, entry in ipairs(bibliography) do read_bib(pandoc.utils.stringify(entry)) end
   else
     read_bib(pandoc.utils.stringify(bibliography))
