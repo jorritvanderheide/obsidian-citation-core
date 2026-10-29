@@ -216,6 +216,15 @@ describe('a post', () => {
 		expect(postMetadata(null, 'Heading', 'n', true, 'html')['reference-section-title']).toBe('Bibliography');
 	});
 
+	it('reads the note exactly as an export does, so a note reads the same on a site', () => {
+		for (const hardLineBreaks of [false, true]) {
+			const shared = { obsidian: 'o.lua', filter: 'f.lua', afterCiteproc: 'a.lua', metadata: 'm.json', bibliography: 'l.bib', csl: null, resourcePath: '.', hardLineBreaks, output: 'out' };
+			const post = postArgs('html', { ...shared, postReferences: 'p.lua', references: 'r.json' });
+			const document = pandocArgs('docx', { ...shared, template: 't', fonts: 'f', referenceDoc: null, extra: [] });
+			expect(post.slice(0, 6)).toEqual(document.slice(0, 6));
+		}
+	});
+
 	it('runs the references filter after citeproc and before the paths are cleared, as Markdown only', () => {
 		const run = { obsidian: 'o.lua', filter: 'f.lua', postReferences: 'p.lua', afterCiteproc: 'a.lua', metadata: 'm.json', bibliography: 'l.bib', csl: null, resourcePath: '.', hardLineBreaks: false, references: 'r.json', output: 'out' };
 		const markdown = postArgs('markdown', run);

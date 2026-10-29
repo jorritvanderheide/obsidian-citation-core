@@ -102,7 +102,8 @@ export interface Run {
 }
 
 /**
- * Pandoc's arguments for one format. The note itself goes in on its own
+ * How every run reads the note, an export's and a post's, so a note reads the
+ * same on a site as in a Word file. The note itself goes in on its own
  * (`Pandoc.run`: stdin, or an input file for the built-in pandoc), and its
  * metadata in a file of its own: pandoc reads a block between `---` lines as
  * metadata wherever it is, and in the note that is text Obsidian shows, whose
@@ -113,6 +114,23 @@ export interface Run {
  * And an image alone in its paragraph stays an image: pandoc would make it a
  * figure with its alt text as the caption, which Obsidian never shows. A
  * caption is an italic line under the image (`obsidian.lua`).
+ */
+function reading(run: Pick<Run, 'hardLineBreaks' | 'metadata' | 'obsidian' | 'filter' | 'bibliography' | 'resourcePath'>): string[] {
+	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
+	const args = [
+		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
+		`--metadata-file=${run.metadata}`,
+		`--lua-filter=${run.obsidian}`,
+		`--lua-filter=${run.filter}`,
+	];
+	if (run.bibliography) args.push(`--bibliography=${run.bibliography}`);
+	args.push(`--resource-path=${run.resourcePath}`);
+	return args;
+}
+
+/**
+ * Pandoc's arguments for one format: the note read as every run reads it
+ * (`reading`), then what the format needs.
  *
  * The order matters: pandoc runs filters and citeproc in the order they are
  * given, and citeproc can only resolve citations the filter has already made.
@@ -129,15 +147,7 @@ export interface Run {
  *   class with a footnote style.
  */
 export function pandocArgs(format: Format, run: Run): string[] {
-	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
-	const args = [
-		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
-		`--metadata-file=${run.metadata}`,
-		`--lua-filter=${run.obsidian}`,
-		`--lua-filter=${run.filter}`,
-	];
-	if (run.bibliography) args.push(`--bibliography=${run.bibliography}`);
-	args.push(`--resource-path=${run.resourcePath}`);
+	const args = reading(run);
 	if (format === 'docx' && run.referenceDoc) args.push(`--reference-doc=${run.referenceDoc}`);
 	// xelatex rather than pandoc's default pdflatex, which stops at any Unicode
 	// character its input encoding has not been set up for.
@@ -356,8 +366,8 @@ export interface PostRun {
 }
 
 /**
- * Pandoc's arguments for a post. The note is read as for a document, and so
- * are its citations; then:
+ * Pandoc's arguments for a post. The note is read as for a document
+ * (`reading`), and so are its citations; then:
  *
  * - Every heading a level down, as in Markdown export: the site shows the
  *   title as the page's one level 1 heading, and the post's start at 2.
@@ -371,15 +381,8 @@ export interface PostRun {
  * - Neither wraps lines: a site reflows the text itself.
  */
 export function postArgs(post: Post, run: PostRun): string[] {
-	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
-	const args = [
-		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
-		`--metadata-file=${run.metadata}`,
-		`--lua-filter=${run.obsidian}`,
-		`--lua-filter=${run.filter}`,
-	];
-	if (run.bibliography) args.push(`--bibliography=${run.bibliography}`);
-	args.push(`--resource-path=${run.resourcePath}`, '--shift-heading-level-by=1', '--wrap=none', '--citeproc');
+	const args = reading(run);
+	args.push('--shift-heading-level-by=1', '--wrap=none', '--citeproc');
 	if (post === 'markdown') {
 		args.push('--to=gfm-raw_html', '--metadata=link-citations=true', `--metadata=references-out=${run.references}`, `--lua-filter=${run.postReferences}`);
 	} else {
