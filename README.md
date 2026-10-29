@@ -21,6 +21,7 @@ it into its own `main.js` and connects it to Obsidian.
 | `pandoc/` | The Lua filters. |
 | `fonts/` | Open Sans, for PDF. |
 | `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
+| `scripts/pandoc-floor.sh` | The filter tests against older pandocs, to find the oldest that works. |
 | `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; and `conformance.test.ts`, which runs only on a vault you point it at. |
 | `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
 | `flake.nix` | The pinned pandoc, as pandoc's static build and its WebAssembly build, and the checks. |
@@ -61,6 +62,12 @@ and the plugins that use it share it.
   the built-in one when there isn't. An empty setting counts as the default.
   Anything else is the path to your own pandoc. `pandocFor` turns the setting
   into a `Pandoc`.
+- **An installed pandoc is asked its version first** (`pandocAge`). Below
+  3.0 it can't read a note at all, and `pandocFor` refuses it with
+  `tooOldPandoc`. From 3.0 to 3.6.3 it runs, but turns some citations into
+  plain text, so the first run in a session comes with `oldPandoc` as the
+  `Pandoc`'s `notice`, for the plugin to show. A version it can't read runs
+  without a word.
 - **It sees only the vault and the folders it's given.** The vault is `/`, and
   each folder a file it needs is in gets a name of its own (`Mounts`). It
   can't see the rest of the disk. Paths go through `Pandoc.see`, a run's
@@ -108,6 +115,14 @@ repository's owner. It's either citeproc formatting something differently,
 which moving to the newer pandoc fixes, or a real break, which wants a fix in
 the filters. It runs on Codeberg because GitHub turns off a scheduled
 workflow after 60 days without a commit.
+
+The oldest installed pandoc that works is 3.6.4 (`OLDEST_PANDOC`), found by
+running the same file on each release with `scripts/pandoc-floor.sh`. Below
+3.6.4, a key with a colon or a link to a heading stays text, and in 3.6.3 and
+earlier a whole export can come out without its citations. From 3.6.4 on, only
+the formatting differs. A change to a filter or to the way pandoc reads a note
+(`reading` in `src/core/document.ts`) can move the floor, so run the script
+again then, on the floor and the release before it.
 
 ### A new version
 

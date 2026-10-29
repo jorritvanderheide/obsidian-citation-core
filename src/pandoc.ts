@@ -87,14 +87,38 @@ export interface Pandoc {
 	run(args: string[], input: string): Promise<string>;
 	/** What pandoc makes of arguments: where it would write, then what it would read, from `--dump-args`. */
 	dumpArgs(args: string[]): Promise<string>;
+	/**
+	 * What to tell the person about this pandoc before it runs, as a notice,
+	 * when there's something: an installed one old enough to lose citations
+	 * (`oldPandoc`). `pandocFor` gives it once a session.
+	 */
+	readonly notice?: string;
 }
+
+/**
+ * What an installed pandoc prints for `--version`, run in `cwd`. Empty when
+ * it prints nothing or fails some other way than not being there, so the
+ * run says what is wrong. `settings` is as for `installedPandoc`.
+ */
+export function installedVersion(executable: string, cwd: string, settings = SETTINGS): Promise<string> {
+	return new Promise((resolve, reject) => {
+		execFile(executable, ['--version'], { cwd }, (error: (Error & { code?: unknown }) | null, stdout: string) => {
+			if (error?.code === 'ENOENT') reject(missingPandoc(executable, settings));
+			else resolve(error === null ? stdout : '');
+		});
+	});
+}
+
+/** What to say when there's no pandoc at `executable`. */
+const missingPandoc = (executable: string, settings: string) =>
+	new ExportError(`Couldn't find pandoc at "${executable}". Check the path in ${settings}, or set it back to "pandoc".`);
 
 /**
  * An installed pandoc, run in `cwd`, the vault. `settings` says where pandoc's
  * path is set, in the plugin that runs it, for the message when it isn't there.
  */
 export function installedPandoc(executable: string, cwd: string, settings = SETTINGS): Pandoc {
-	const missing = () => new ExportError(`Couldn't find pandoc at "${executable}". Check the path in ${settings}, or set it back to "pandoc".`);
+	const missing = () => missingPandoc(executable, settings);
 	return {
 		builtIn: false,
 		see: (host) => host,

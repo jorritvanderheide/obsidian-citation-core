@@ -7,8 +7,8 @@ import { mkdir, readFile, rename, rm, writeFile } from 'fs/promises';
 import { homedir } from 'os';
 import path, { join } from 'path';
 import { inflateRawSync } from 'zlib';
-import { BUILT_IN, cacheFolder, choosePandoc, findOnPath, zipEntry } from './core/built-in';
-import { builtInPandoc, ExportError, installedPandoc, type Pandoc } from './pandoc';
+import { BUILT_IN, cacheFolder, choosePandoc, findOnPath, oldPandoc, pandocAge, tooOldPandoc, zipEntry } from './core/built-in';
+import { builtInPandoc, ExportError, installedPandoc, installedVersion, type Pandoc } from './pandoc';
 
 /** Compiled once a session: the file is 62 MB, and the same for every run. */
 const compiled = new Map<string, WebAssembly.Module>();
@@ -64,11 +64,19 @@ export async function downloadBuiltIn(fetch: (url: string) => Promise<ArrayBuffe
 	return module;
 }
 
+/** The installed pandocs whose age has been noticed this session, by path. */
+const noticed = new Set<string>();
+
 /**
  * The pandoc the **Pandoc** setting asks for (`choosePandoc`), run in `vault`.
  * The built-in one is downloaded first when it isn't there yet, if `agree`
  * says so; null when it doesn't. `settings` says where pandoc's path is set,
  * for the message when an installed one isn't there.
+ *
+ * An installed pandoc is asked its version first (`pandocAge`). One too old
+ * to read a note is refused with `tooOldPandoc`. One that runs but loses some
+ * citations runs, and comes with `oldPandoc` as its `notice` the first time
+ * this session.
  */
 export async function pandocFor(
 	setting: string,
@@ -78,7 +86,14 @@ export async function pandocFor(
 	fetch: (url: string) => Promise<ArrayBuffer>,
 ): Promise<Pandoc | null> {
 	const choice = choosePandoc(setting, (name) => findOnPath(name, process.env, path, existsSync));
-	if (choice.kind === 'installed') return installedPandoc(choice.executable, vault, settings);
+	if (choice.kind === 'installed') {
+		const pandoc = installedPandoc(choice.executable, vault, settings);
+		const age = pandocAge(await installedVersion(choice.executable, vault, settings));
+		if (age.kind === 'too old') throw new ExportError(tooOldPandoc(age.version, settings));
+		if (age.kind === 'fine' || noticed.has(choice.executable)) return pandoc;
+		noticed.add(choice.executable);
+		return { ...pandoc, notice: oldPandoc(age.version) };
+	}
 	let module = await loadBuiltIn();
 	if (module === null) {
 		if (!(await agree())) return null;

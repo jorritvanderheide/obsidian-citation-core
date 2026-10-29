@@ -1,7 +1,7 @@
 import { posix, win32 } from 'path';
 import { deflateRawSync, inflateRawSync } from 'zlib';
 import { describe, expect, it } from 'vitest';
-import { cacheFolder, choosePandoc, findOnPath, Mounts, seen, seenArgs, zipEntry } from '../src/core/built-in';
+import { cacheFolder, choosePandoc, findOnPath, Mounts, OLDEST_PANDOC, pandocAge, seen, seenArgs, tooOldPandoc, zipEntry } from '../src/core/built-in';
 
 describe('choosePandoc', () => {
 	const none = () => null;
@@ -23,6 +23,47 @@ describe('choosePandoc', () => {
 	it('runs a pandoc of yours as given, found or not', () => {
 		expect(choosePandoc('/opt/pandoc/bin/pandoc', none)).toEqual({ kind: 'installed', executable: '/opt/pandoc/bin/pandoc' });
 		expect(choosePandoc('pandoc-3', none)).toEqual({ kind: 'installed', executable: 'pandoc-3' });
+	});
+});
+
+describe('pandocAge', () => {
+	const version = (v: string) => `pandoc ${v}\nFeatures: +server +lua\nScripting engine: Lua 5.4\n`;
+
+	it('finds the pandoc that tests ran on, and anything newer, fine', () => {
+		expect(pandocAge(version('3.13'))).toEqual({ kind: 'fine' });
+		expect(pandocAge(version(OLDEST_PANDOC.works))).toEqual({ kind: 'fine' });
+		expect(pandocAge(version('4.0'))).toEqual({ kind: 'fine' });
+	});
+
+	it('compares numbers, so 3.13 is newer than 3.6.4 and 3.6.10 than 3.6.4', () => {
+		expect(pandocAge(version('3.10.2'))).toEqual({ kind: 'fine' });
+		expect(pandocAge(version('3.6.10'))).toEqual({ kind: 'fine' });
+	});
+
+	it('finds one that loses some citations old', () => {
+		expect(pandocAge(version('3.6.3'))).toEqual({ kind: 'old', version: '3.6.3' });
+		expect(pandocAge(version('3.1.11.1'))).toEqual({ kind: 'old', version: '3.1.11.1' });
+		expect(pandocAge(version('3.0'))).toEqual({ kind: 'old', version: '3.0' });
+	});
+
+	it('finds one that cannot read a note too old', () => {
+		expect(pandocAge(version('2.19.2'))).toEqual({ kind: 'too old', version: '2.19.2' });
+		expect(pandocAge(version('2.9.2.1'))).toEqual({ kind: 'too old', version: '2.9.2.1' });
+	});
+
+	it("reads Windows' pandoc.exe as well", () => {
+		expect(pandocAge('pandoc.exe 3.1.3\r\n')).toEqual({ kind: 'old', version: '3.1.3' });
+	});
+
+	it('lets a pandoc it cannot read the version of run', () => {
+		expect(pandocAge('')).toEqual({ kind: 'fine' });
+		expect(pandocAge('something else 2.0\n')).toEqual({ kind: 'fine' });
+	});
+
+	it('says how new a pandoc has to be, and where to set another', () => {
+		expect(tooOldPandoc('2.9.2.1', 'Settings → Due Credit')).toBe(
+			`Your pandoc is version 2.9.2.1, and it needs to be ${OLDEST_PANDOC.works} or later. Update pandoc, or set the full path to a newer one in Settings → Due Credit.`,
+		);
 	});
 });
 

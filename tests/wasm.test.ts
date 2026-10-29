@@ -7,7 +7,8 @@ import { join } from 'path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { seen } from '../src/core/built-in';
 import { pandocArgs, postArgs, readReferences } from '../src/core/document';
-import { builtInPandoc, withFiles } from '../src/pandoc';
+import { builtInPandoc, ExportError, withFiles } from '../src/pandoc';
+import { pandocFor } from '../src/wasm';
 
 const wasm = process.env.PANDOC_WASM;
 const root = mkdtempSync(join(tmpdir(), 'built-in-test-'));
@@ -65,5 +66,41 @@ describe.skipIf(!wasm)('the built-in pandoc', () => {
 		const p = pandoc();
 		await expect(p.run(['--from=nonsense'], 'x')).rejects.toThrow(/nonsense/);
 		expect(await p.dumpArgs(['--output=out.docx', 'chapter.md'])).toBe('out.docx\nchapter.md\n');
+	});
+});
+
+// An installed pandoc stands in as a script that only prints its version.
+describe.skipIf(process.platform === 'win32')('an installed pandoc', () => {
+	const pandocOf = (version: string) => {
+		const file = join(root, `pandoc-${version}`);
+		writeFileSync(file, `#!/bin/sh\necho "pandoc ${version}"\n`, { mode: 0o755 });
+		return file;
+	};
+	const run = (setting: string) =>
+		pandocFor(
+			setting,
+			vault,
+			'Settings → Test',
+			() => Promise.resolve(false),
+			() => Promise.reject(new Error('no download in a test')),
+		);
+
+	it('runs, with nothing to say, when it is new enough', async () => {
+		expect((await run(pandocOf('3.13')))?.notice).toBeUndefined();
+	});
+
+	it('runs with a notice when it loses some citations, once a session', async () => {
+		const file = pandocOf('3.1.3');
+		expect((await run(file))?.notice).toBe('Your pandoc is version 3.1.3, which turns some citations into plain text. Update it to 3.6.4 or later.');
+		expect((await run(file))?.notice).toBeUndefined();
+	});
+
+	it('is refused when it is too old to read a note', async () => {
+		await expect(run(pandocOf('2.9.2.1'))).rejects.toThrow(ExportError);
+		await expect(run(pandocOf('2.9.2.1'))).rejects.toThrow('Your pandoc is version 2.9.2.1, and it needs to be 3.6.4 or later.');
+	});
+
+	it("says so when it isn't there", async () => {
+		await expect(run(join(root, 'no-pandoc'))).rejects.toThrow(`Couldn't find pandoc at "${join(root, 'no-pandoc')}". Check the path in Settings → Test, or set it back to "pandoc".`);
 	});
 });

@@ -18,6 +18,53 @@ export const BUILT_IN = {
 	file: 'pandoc-3.13.wasm',
 } as const;
 
+/**
+ * The oldest installed pandoc that works. From `reads` on, pandoc reads
+ * `[[…]]` at all (`wikilinks_title_after_pipe`), and from `works` on, every
+ * citation comes out as one: before it, a key with a colon and a link to a
+ * heading stay text, and before 3.6.4 even a plain citation can. Found by
+ * running `tests/pandoc.test.ts` on each release (`scripts/pandoc-floor.sh`),
+ * which a change to a filter or to `reading` runs again.
+ */
+export const OLDEST_PANDOC = { reads: '3.0', works: '3.6.4' } as const;
+
+/** How an installed pandoc compares with `OLDEST_PANDOC`, with the version it said. */
+export type Age = { kind: 'fine' } | { kind: 'old' | 'too old'; version: string };
+
+/**
+ * How old the pandoc is that printed `output` for `--version`. Output that
+ * doesn't start with a version counts as fine, so a pandoc that words it
+ * differently still runs, and says itself what it can't do.
+ */
+export function pandocAge(output: string): Age {
+	const version = /^pandoc(?:\.exe)?[ \t]+(\d+(?:\.\d+)*)/.exec(output.trimStart())?.[1];
+	if (version === undefined) return { kind: 'fine' };
+	if (older(version, OLDEST_PANDOC.reads)) return { kind: 'too old', version };
+	if (older(version, OLDEST_PANDOC.works)) return { kind: 'old', version };
+	return { kind: 'fine' };
+}
+
+/** Whether version `a` comes before `b`, part by part as numbers, so 3.13 is after 3.6.4. */
+function older(a: string, b: string): boolean {
+	const x = a.split('.').map(Number);
+	const y = b.split('.').map(Number);
+	for (let i = 0; i < Math.max(x.length, y.length); i++) {
+		const d = (x[i] ?? 0) - (y[i] ?? 0);
+		if (d !== 0) return d < 0;
+	}
+	return false;
+}
+
+/** What to say when an installed pandoc is too old to read a note. `settings` says where pandoc's path is set. */
+export function tooOldPandoc(version: string, settings: string): string {
+	return `Your pandoc is version ${version}, and it needs to be ${OLDEST_PANDOC.works} or later. Update pandoc, or set the full path to a newer one in ${settings}.`;
+}
+
+/** What to say, once a session, when an installed pandoc runs but loses some citations. */
+export function oldPandoc(version: string): string {
+	return `Your pandoc is version ${version}, which turns some citations into plain text. Update it to ${OLDEST_PANDOC.works} or later.`;
+}
+
 /** The **Pandoc** setting's default: an installed pandoc if there is one, else the built-in one. */
 export const DEFAULT_PANDOC = 'pandoc';
 

@@ -4,6 +4,16 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
+## Unreleased
+
+- An installed pandoc is asked its version before it runs. One older than 3.0,
+  which can't read a note, is refused with a message that says which version
+  is needed. From 3.0 to 3.6.3, pandoc turns some citations into plain
+  text without a word: a key with a colon, a link to a heading, and in 3.6.3
+  and earlier sometimes every citation in an export. It still runs, and
+  `pandocFor` gives a notice for the plugin to show, once a session. Debian 13
+  and Ubuntu 24.04 install a pandoc in that range.
+
 ## 0.4.0
 
 - `prepare` lists what a post won't show as Obsidian does, as `unshown`, so a
