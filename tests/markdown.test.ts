@@ -402,3 +402,25 @@ describe('wikilinked', () => {
 		expect(wikilinked('```\n[x](y.md)\n```\n')).toBe('```\n[x](y.md)\n```\n');
 	});
 });
+
+describe('wikilinked, on what is no link to a note', () => {
+	it('writes the pipe a table row needs, and reads parentheses in a path', () => {
+		expect(wikilinked('| [Smith](smith-2017.md) | x |')).toBe('| [[smith-2017\\|Smith]] | x |');
+		expect(wikilinked('[S](Literature/Smith%20(2017)%20Archive.md)')).toBe('[[Literature/Smith (2017) Archive|S]]');
+	});
+
+	it('leaves a link to anything but a note alone, so the check never lists it', () => {
+		const kept = '[site](example.com) [d](folder/) [r](files/report.pdf) [u](t)';
+		expect(wikilinked(kept)).toBe(kept);
+	});
+
+	it('leaves an image inside a link, a footnote, an escaped bracket, and math alone', () => {
+		const kept = '[![img](a.png)](b.md) Claim[^1](2019) \\[x](y.md) $f[x](y.md)$ $$E[X](t.md)$$';
+		expect(wikilinked(kept)).toBe(kept);
+	});
+
+	it('leaves a link alone whose path decodes to what a wikilink can not hold', () => {
+		const kept = '[a](x%7Cy.md) [b](x%5D.md) [c](a%23b.md) [d [e] f](g.md)';
+		expect(wikilinked(kept)).toBe(kept);
+	});
+});

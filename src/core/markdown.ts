@@ -422,30 +422,56 @@ export function imageLinks(text: string, resolve: (linkpath: string) => string |
 
 const LINK = /(?<!!)\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
 
-/** A Markdown link, not an image: its words, and its target, bare or in `<…>`. One with a title is left out. */
-const MARKDOWN_LINK = /(?<!!)\[([^\]]*)\]\((<[^>]*>|[^)\s]+)\)/g;
+/**
+ * A Markdown link, not an image, an escaped bracket or a footnote: its words,
+ * with no bracket in them, and its target, bare, with parentheses that pair up,
+ * or in `<…>`. One with a title is left out.
+ */
+const MARKDOWN_LINK = /(?<![!\\])\[(?!\^)([^[\]]*)\]\((<[^>\n]*>|(?:[^()\s]|\([^()\s]*\))+)\)/g;
+
+/** Math, `$$…$$` or `$…$`, which looks like Markdown and isn't. */
+const MATH = /(\$\$[\s\S]*?\$\$|\$(?=\S)[^$\n]*?\S\$(?!\d))/;
+
+/** Prose without its math changed, the way `outsideCode` leaves code. */
+function outsideMath(prose: string, change: (text: string) => string): string {
+	return prose
+		.split(MATH)
+		.map((part, at) => (at % 2 === 1 ? part : change(part)))
+		.join('');
+}
 
 /**
- * Every Markdown link to a file in the vault, as the wikilink Obsidian takes it
+ * Every Markdown link to a note in the vault, as the wikilink Obsidian takes it
  * for: `[Smith](smith-2017.md)` is `[[smith-2017|Smith]]`. Obsidian writes a
  * link either way, as its "Use [[Wikilinks]]" setting says, and reads both
- * alike, so from here on every step has one kind of link to know. A web
- * address, an anchor in the note, an image and code are left as they are.
+ * alike, so from here on every step has one kind of link to know. Only a link
+ * to a `.md` file is one: a web address, a folder, a PDF and an anchor in the
+ * note are left as they are, and so are code and math. So is a path that
+ * decodes to what a wikilink can't hold. In a table row the wikilink's pipe is
+ * written `\|`, as Obsidian writes it there.
  */
 export function wikilinked(text: string): string {
 	return outsideCode(text, (prose) =>
-		prose.replace(MARKDOWN_LINK, (link: string, words: string, written: string) => {
-			const bare = written.startsWith('<') ? written.slice(1, -1) : written;
-			if (/^[a-z][\w+.-]*:/i.test(bare) || bare.startsWith('#')) return link;
-			let target: string;
-			try {
-				target = decodeURIComponent(bare);
-			} catch {
-				return link;
-			}
-			const path = target.replace(/\.md(?=#|$)/, '');
-			return words.trim() === '' ? `[[${path}]]` : `[[${path}|${words}]]`;
-		}),
+		outsideMath(prose, (part) =>
+			part.replace(MARKDOWN_LINK, (link: string, words: string, written: string, at: number) => {
+				const bare = written.startsWith('<') ? written.slice(1, -1) : written;
+				const hash = bare.indexOf('#');
+				const rawPath = hash === -1 ? bare : bare.slice(0, hash);
+				if (!/\.md$/i.test(rawPath) || /^[a-z][\w+.-]*:/i.test(rawPath)) return link;
+				let path: string;
+				let fragment: string;
+				try {
+					path = decodeURIComponent(rawPath).replace(/\.md$/i, '');
+					fragment = hash === -1 ? '' : decodeURIComponent(bare.slice(hash));
+				} catch {
+					return link;
+				}
+				if (/[|[\]#^]/.test(path) || /[|[\]]/.test(fragment)) return link;
+				const line = part.slice(part.lastIndexOf('\n', at) + 1);
+				const pipe = /^\s*\|/.test(line) ? '\\|' : '|';
+				return words.trim() === '' ? `[[${path}${fragment}]]` : `[[${path}${fragment}${pipe}${words}]]`;
+			}),
+		),
 	);
 }
 

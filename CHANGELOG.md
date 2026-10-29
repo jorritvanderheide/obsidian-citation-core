@@ -4,6 +4,14 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
+## Unreleased
+
+- A Markdown link is read as a wikilink only when it points at a note, a `.md`
+  file. 0.3.0 also took links to web pages, folders and PDFs for links to
+  notes, and listed them in the check. A link in a table no longer splits its
+  cell, a path with parentheses is read whole, and an image inside a link, a
+  footnote, an escaped bracket and math are left alone.
+
 ## 0.3.1
 
 - Pandoc arguments let `+RTS` through again, as before 0.3.0. Refusing it
