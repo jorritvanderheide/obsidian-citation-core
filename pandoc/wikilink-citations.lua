@@ -40,6 +40,11 @@
 
 local keys = {}
 
+--- Whether `keys` holds every key there is: not once a bibliography is something
+--- other than a .bib, or one that could not be read, since then an unknown key
+--- may still be an entry.
+local every_key = true
+
 --- Every entry key in a .bib file.
 ---
 --- Read rather than guessed, and this is the whole of the filter's judgement.
@@ -49,8 +54,11 @@ local keys = {}
 --- as a citation to a work that does not exist, and citeproc would either drop
 --- it or print a bracketed question mark into the middle of a sentence.
 local function read_bib(path)
+  local extension = path:lower():match('%.(%w+)$')
+  if extension ~= 'bib' and extension ~= 'bibtex' then every_key = false end
   local file = io.open(path, 'r')
   if not file then
+    every_key = false
     io.stderr:write("Couldn't open the bibliography at " .. path .. ". Check that the file is there and can be read.\n")
     return
   end
@@ -267,6 +275,19 @@ local function unswallow(cite)
   return out
 end
 
+--- A bare `@word` that names no entry, given back as the words it was.
+---
+--- Pandoc reads `@jack` as an in-text citation wherever it stands, so a handle
+--- in somebody's prose, or in a passage they quoted, came out as "(jack?)".
+--- Only when the filter knows every key, though: from a bibliography it can't
+--- read, `@jack` may be an entry, and citeproc is left to say. In brackets,
+--- `[@typo]` was meant as a citation, and stays one.
+local function unknown(cite)
+  local citation = cite.citations[1]
+  if not every_key or #cite.citations ~= 1 or citation.mode ~= 'AuthorInText' or keys[citation.id] then return nil end
+  return cite.content
+end
+
 --- Whether an inline is a citation that can share brackets with its neighbour.
 --- Anything in brackets, with its author or without, but never an in-text
 --- citation, so "Marsh (2024) argues", written as `@key`, is never pulled
@@ -318,13 +339,15 @@ local function group(inlines)
   return out
 end
 
--- Four passes, in this order, and not one filter with all of them in it: a
+-- Five passes, in this order, and not one filter with all of them in it: a
 -- single filter walks inlines before it reaches the metadata, so every link
 -- would be tested against a bibliography that had not been read yet, and a
--- wikilink an in-text citation swallowed is given back before links are read.
+-- wikilink an in-text citation swallowed is given back before links are read,
+-- and before an unknown `@word` it was swallowed by goes back to its words.
 return {
   { Meta = load },
   { Cite = unswallow },
+  { Cite = unknown },
   { Link = link },
   { Inlines = group },
 }

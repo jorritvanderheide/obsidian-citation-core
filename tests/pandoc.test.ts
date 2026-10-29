@@ -81,6 +81,12 @@ describe.skipIf(!installed())('wikilink-citations.lua', () => {
 		['As @a [[My idea|this idea]] argues', 'As A (2024) this idea argues'],
 		['@a [[b|see b, p. 3]]', 'A (2024) (see B 2025, 3)'],
 		['@a [p. 4] says', 'A (2024, 4) says'],
+		// A bare @word that names no entry is a handle or a quote's, not a
+		// citation: it stays as written. In brackets it is still one.
+		['As @jack wrote', 'As @jack wrote'],
+		['@jack [p. 4] says', '@jack [p. 4] says'],
+		['@jack [[b]] says', '@jack (B 2025) says'],
+		['see [@typo]', 'see (typo?)'],
 		// A web link stays one, even when its last part is a key.
 		['[the page](https://example.org/a) says', 'the page says'],
 		['<https://example.org/a>', 'https://example.org/a'],
@@ -123,8 +129,8 @@ type Inline = { t: string; c?: unknown };
 type Citation = { citationId: string; citationPrefix: Inline[]; citationSuffix: Inline[]; citationMode: { t: string } };
 
 /** The first citation the filter alone makes of a paragraph, or null. */
-function filtered(markdown: string): { key: string; prefix: string; suffix: string; mode: string } | null {
-	const args = ['--from=markdown+wikilinks_title_after_pipe', `--lua-filter=${filter}`, `--bibliography=${bib}`, '--to=json'];
+function filtered(markdown: string, bibliography = bib): { key: string; prefix: string; suffix: string; mode: string } | null {
+	const args = ['--from=markdown+wikilinks_title_after_pipe', `--lua-filter=${filter}`, `--bibliography=${bibliography}`, '--to=json'];
 	const json = JSON.parse(execFileSync('pandoc', args, { input: markdown }).toString()) as { blocks: { c: Inline[] }[] };
 	const cite = json.blocks[0]?.c.find((inline) => inline.t === 'Cite');
 	const first = (cite?.c as [Citation[]] | undefined)?.[0][0];
@@ -132,6 +138,20 @@ function filtered(markdown: string): { key: string; prefix: string; suffix: stri
 	const words = (inlines: Inline[]) => inlines.map((inline) => (inline.t === 'Str' ? (inline.c as string) : ' ')).join('');
 	return { key: first.citationId, prefix: words(first.citationPrefix), suffix: words(first.citationSuffix), mode: first.citationMode.t };
 }
+
+describe.skipIf(!installed())('a bare @word', () => {
+	it('stays a citation when the filter cannot read every key, from a bibliography that is not a .bib', () => {
+		expect(filtered('As @jack wrote')).toBeNull();
+		expect(filtered('As @jack wrote', join(dir, 'library.json'))?.key).toBe('jack');
+	});
+
+	it('goes back to its words with a .bibtex too, which is read like a .bib', () => {
+		const bibtex = join(dir, 'library.bibtex');
+		writeFileSync(bibtex, readFileSync(bib));
+		expect(filtered('[[a]]', bibtex)?.key).toBe('a');
+		expect(filtered('As @jack wrote', bibtex)).toBeNull();
+	});
+});
 
 describe.skipIf(!installed())('one rule, written twice', () => {
 	it.each(['a', 'Literature/a', 'Literature/a.md', 'a#p. 12', 'a#^block', '@a', 'Literature/@a.md#Claim', '@@a', 'a.pdf', 'ab', 'a.md.md', 'Notes/b a'])(
