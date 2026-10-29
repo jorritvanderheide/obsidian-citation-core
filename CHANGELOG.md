@@ -18,6 +18,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
 - A citation key with a slash in it, like `[[jones/2019]]`, is a citation. A
   link read it as a folder and a name, so it came out as plain text, and the
   check before an export didn't say so.
+- A Markdown export leaves an image and the line in italics under it as
+  Obsidian shows them, the caption on its own line. 0.2.0 put a blank line
+  between them, which made the caption a paragraph of its own.
 
 ## 0.2.0
 

@@ -259,17 +259,18 @@ describe.skipIf(!installed())('obsidian.lua', () => {
 
 	// Markdown has figures only in pandoc's own, and only since a pandoc newer
 	// than many people have installed: an older one left the caption out
-	// altogether. The image and its italic line read the same everywhere.
-	it('keeps the image and its caption in italics in a Markdown export, as written, and leaves an image alone as it is', () => {
-		expect(markdown('![Wooden bed](bed.png){width=300px}\n*A raised bed in March.*\n')).toBe('![Wooden bed](bed.png){width="300px"}\n\n*A raised bed in March.*\n');
+	// altogether. So a Markdown export leaves the paragraph as Obsidian shows it:
+	// with strict line breaks on, as here, the caption runs on after the image.
+	it('leaves the image and its caption in italics in a Markdown export as Obsidian shows them, and an image alone as it is', () => {
+		expect(markdown('![Wooden bed](bed.png){width=300px}\n*A raised bed in March.*\n')).toBe('![Wooden bed](bed.png){width="300px"} *A raised bed in March.*\n');
 		expect(markdown('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n')).toBe('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n');
 		expect(markdown('![Wooden bed](bed.png) and *words*\n')).toBe('![Wooden bed](bed.png) and *words*\n');
 	});
 
-	it('reads the caption under a line break too, as Obsidian has it with strict line breaks off', () => {
+	it('keeps the line break before the caption in a Markdown export, as Obsidian has it with strict line breaks off', () => {
 		const output = join(dir, 'caption.md');
 		execFileSync('pandoc', pandocArgs('md', { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: true, referenceDoc: null, extra: [], resourcePath: dir, output }), { input: '![Wooden bed](bed.png)\n*A raised bed.*\n' });
-		expect(readFileSync(output, 'utf8')).toBe('![Wooden bed](bed.png)\n\n*A raised bed.*\n');
+		expect(readFileSync(output, 'utf8')).toBe('![Wooden bed](bed.png)\\\n*A raised bed.*\n');
 	});
 
 	it('reads a callout inside a callout, without the blank line pandoc wants', () => {

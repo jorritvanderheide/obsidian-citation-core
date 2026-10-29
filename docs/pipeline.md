@@ -78,10 +78,10 @@ Pandoc's implicit figures are off too. Pandoc would make an image alone in its
 paragraph a figure, with its alt text as the caption, which Obsidian never
 shows. A figure is an image with an italic line right under it instead:
 `pandoc/obsidian.lua` makes the line its caption, and the image keeps its alt
-text. Markdown, an export's or a post's, keeps the two as they were written,
-the image and then its caption in italics: GitHub's Markdown has no figures,
-and pandoc's own has them only since a pandoc newer than many people have
-installed, where an older one left the caption out.
+text. A Markdown export leaves the paragraph as Obsidian shows it, since
+pandoc's Markdown has figures only in a recent pandoc and an older one left the
+caption out. A post in GitHub's Markdown, which has no figures, gets the image
+and its caption in italics as two paragraphs.
 
 The tests expect the pandoc the core's flake pins, the built-in one's version
 (`BUILT_IN` in `src/core/built-in.ts`), because citeproc formats some entries
