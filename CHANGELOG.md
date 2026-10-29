@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.2.0
 
 - A Markdown export keeps an image's caption as the italic line under it, as
   written. A pandoc older than the one the tests expect left the caption out
