@@ -36,13 +36,20 @@ same commit:
 
 - **npm:** a git dependency on the GitHub mirror, at that commit, in
   `devDependencies`:
-  `"obsidian-citation-core": "git+https://github.com/jorritvanderheide/obsidian-citation-core.git#<commit>"`.
+  `npm install git+https://github.com/jorritvanderheide/obsidian-citation-core.git#<commit>`,
+  which npm writes as `"obsidian-citation-core":
+  "github:jorritvanderheide/obsidian-citation-core#<commit>"`.
   A clean checkout of the plugin builds with it, which the plugin directory's
   review needs. To work on the core and a plugin at once, run
   `npm install --no-save ../obsidian-citation-core` in the plugin.
 - **Nix:** a flake input, which `flake.lock` pins to the same commit. The
   plugin's `checks` run this repository's checks at that commit, and one more
   check fails when the two pins disagree.
+
+The commit a plugin pins is always a tagged version, so its release notes can
+say what changed since the last: [`CHANGELOG.md`](CHANGELOG.md) has each
+version. A plugin that moves to a new one carries what its users notice into
+its own changelog.
 
 ## The built-in pandoc
 
@@ -97,6 +104,21 @@ Citeproc's output changes between pandoc versions, so the expected results are
 for one version, 3.13. That's the built-in pandoc's version, and this flake
 pins the same one as pandoc's own static build for Linux, where CI runs. Move
 the two together, and the hashes in `src/core/built-in.ts` with them.
+
+### A new version
+
+1. **Write the notes.** Rename `## Unreleased` in `CHANGELOG.md` to the new
+   version. Before 1.0.0, a change in what a plugin's users get, or in what
+   `src/index.ts` exports, raises the minor version, and anything else the
+   patch.
+2. **Bump it:** `npm version <x.y.z> --no-git-tag-version`, and the
+   `npmDepsHash` in `flake.nix` that `nix flake check` then asks for.
+3. **Push** the commit, then tag it, without a `v`: `jj tag set <x.y.z> -r
+   <commit>`, and `git push codeberg <x.y.z>`, since jj doesn't push tags.
+   The tag reaches the GitHub mirror with it.
+4. **In each plugin,** move both pins to the tagged commit (`nix flake update
+   citation-core`, then `npm install` at it), and write what its users notice
+   under its own `## Unreleased`.
 
 ### The conformance check
 

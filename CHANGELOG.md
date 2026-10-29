@@ -1,0 +1,36 @@
+# Changelog
+
+What changed in each version of the core, newest first. A plugin's own
+changelog says what of this its users notice, in the release that moves to it.
+Each version is a tag, and a plugin pins only a tagged commit.
+
+## Unreleased
+
+- A Markdown export keeps an image's caption as the italic line under it, as
+  written. A pandoc older than the one the tests expect left the caption out
+  altogether.
+- A citation key with a colon in it, `[[smith:2017]]`, is a citation. It used
+  to be taken for a web address and exported as its words, and the check
+  before an export didn't say so.
+- A bare `@word` whose key isn't in the bibliography, a handle in your prose or
+  in a passage you quoted, stays as written instead of becoming "(jack?)". In
+  brackets, `[@typo]`, it's still a citation.
+- An embed with alt text and a width, `![[figure.png|A chart|300]]`, keeps
+  its width.
+- Pandoc arguments refuse an option however it's written: run together after
+  another, as in `-sd x.yaml`, or shortened, as in `--extr=dir`. Either could
+  write a file into the vault.
+- For the plugins: `stylePath`, `missingBibliography` and `missingStyle`, so
+  the style folder and the messages for a missing file are written once, and
+  the style message says a style can be a path. `keyPropertyStatus` and
+  `papersFolderStatus`, for a settings tab to say when the citation key
+  property or the papers folder matches no note.
+- A post reads the note exactly as an export does, from one list of pandoc's
+  arguments.
+- The tests say first when they run against another pandoc than 3.13, and the
+  checks run on every push to the GitHub mirror.
+
+## 0.1.0
+
+What Due Credit 1.6.0 and In the Open 1.3.0 bundle, the first commit with a
+version.
