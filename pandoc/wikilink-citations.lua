@@ -101,15 +101,17 @@ end
 
 --- Whether a link still means anything once the vault is behind you.
 ---
---- A scheme means something outside this document knows how to resolve it: a
---- reader can follow `https:`, and their machine can follow `zotero:`. A `#`
---- in a markdown link means somewhere in the exported document itself, by the
---- ID pandoc gives it. Everything else points at a file in the vault, which the
---- export does not have and will never have, and so does a wikilink to a
---- heading: its headings are the note's, for the person who wrote it.
+--- In a markdown link, a scheme means something outside this document knows
+--- how to resolve it: a reader can follow `https:`, and their machine can
+--- follow `zotero:`. A `#` means somewhere in the exported document itself, by
+--- the ID pandoc gives it. Everything else points at a file in the vault, which
+--- the export does not have and will never have. So does every wikilink, even
+--- with a colon in it, since a note's name never has one and a key can:
+--- `[[smith:2017]]` is a citation, not an address. A wikilink to a heading is
+--- the note's too, for the person who wrote it.
 local function reachable(el, target)
-  if target:match('^%a[%w+.-]*:') then return true end
-  return target:sub(1, 1) == '#' and not el.classes:includes('wikilink')
+  if el.classes:includes('wikilink') then return false end
+  return target:match('^%a[%w+.-]*:') ~= nil or target:sub(1, 1) == '#'
 end
 
 --- Locator terms, so a heading or a label is read as a page only when it is

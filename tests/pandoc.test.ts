@@ -29,7 +29,7 @@ writeFileSync(template, MARKDOWN_TEMPLATE);
 const metadata = join(dir, 'metadata.json');
 writeFileSync(metadata, '{}');
 const bib = join(dir, 'library.bib');
-writeFileSync(bib, '@article{a,\n  author = {A, Ann},\n  title = {First},\n  year = {2024}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  year = {2025}\n}\n');
+writeFileSync(bib, '@article{a,\n  author = {A, Ann},\n  title = {First},\n  year = {2024}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  year = {2025}\n}\n@article{smith:2017,\n  author = {Smith, Sam},\n  title = {Colons},\n  year = {2017}\n}\n');
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 // Every test here runs pandoc synchronously, a second at a time on the built-in
@@ -84,7 +84,11 @@ describe.skipIf(!installed())('wikilink-citations.lua', () => {
 		// A web link stays one, even when its last part is a key.
 		['[the page](https://example.org/a) says', 'the page says'],
 		['<https://example.org/a>', 'https://example.org/a'],
-		// Paper Trail's form for Better BibTeX's dialog: everything around the key, in the alias.
+		// A wikilink is never a web address, even with a colon in it: a key can
+		// have one, as Better BibTeX allows, and a note's name never does.
+		['[[smith:2017]] says', '(Smith 2017) says'],
+		['[[smith:2017|smith:2017, p. 7]]', '(Smith 2017, 7)'],
+		// Paper Trail's form, from Insert annotation, and Due Credit's Insert citation: everything around the key, in the alias.
 		['[[a|a, p. 4]]', '(A 2024, 4)'],
 		['[[a|see a, p. 4, emphasis added]]', '(see A 2024, 4, emphasis added)'],
 		['[[a|a, p. 4]]; [[b]]', '(A 2024, 4; B 2025)'],
@@ -102,7 +106,7 @@ describe.skipIf(!installed())('wikilink-citations.lua', () => {
 		['[[a#p. 12|a]]', '(A 2024, 12)'],
 		['[[a#p. 12|a, p. 4]]', '(A 2024, 4)'],
 		['[[a|Ann’s paper]]', '(A 2024)'],
-		// Paper Trail's Add page to citation on a label you wrote: the page after its first comma.
+		// Due Credit's Add page to citation on a label you wrote: the page after its first comma.
 		['[[a|Marsh, p. 4]]', '(A 2024, 4)'],
 		['[[a|Marsh, pp. 4, 6]]', '(A 2024, 4, 6)'],
 		['[[a|Smith, Jones]]', '(A 2024)'],
@@ -136,6 +140,10 @@ describe.skipIf(!installed())('one rule, written twice', () => {
 			expect(filtered(`[[${target}]]`)?.key ?? null).toBe(keyOf(target) === 'a' ? 'a' : null);
 		},
 	);
+
+	it('[[smith:2017]] is a citation in the filter, as keyOf names it, a colon and all', () => {
+		expect(filtered('[[smith:2017]]')?.key).toBe(keyOf('smith:2017'));
+	});
 
 	// Where `renameInAlias` finds the key is where `spelled` splits the alias.
 	it.each(['a', 'see a, p. 4', '-a, p. 4', 'see -a', '@a', 'see @a, p. 4', '-@a', 'about a; b', 'aa a', 're-a', 'me@a', 'ab', 'a.', 'see (a)', 'Smith and Jones', 'see\u00A0a'])(
@@ -303,6 +311,10 @@ describe.skipIf(!installed())('a markdown link', () => {
 		const args = pandocArgs('md', { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: false, referenceDoc: null, extra: [], resourcePath: dir, output });
 		execFileSync('pandoc', args, { input: '# Intro {#intro}\n\n[back](#intro)\n' });
 		expect(readFileSync(output, 'utf8')).toContain('[back](#intro)');
+	});
+
+	it('with a scheme stays a link, and a wikilink with a colon becomes its words', () => {
+		expect(markdown('[zotero](zotero://select/items/ABC) and [[Meeting: notes]]\n')).toBe('[zotero](zotero://select/items/ABC) and Meeting: notes\n');
 	});
 });
 
