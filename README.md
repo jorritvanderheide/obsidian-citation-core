@@ -24,6 +24,7 @@ it into its own `main.js` and connects it to Obsidian.
 | `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; and `conformance.test.ts`, which runs only on a vault you point it at. |
 | `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
 | `flake.nix` | The pinned pandoc, as pandoc's static build and its WebAssembly build, and the checks. |
+| `.forgejo/workflows/newest-pandoc.yml` | Once a month, the filter tests against the newest pandoc, on Codeberg. |
 | `docs/pipeline.md` | Every step from a note to pandoc's input, in order. |
 
 How a link becomes a citation, form by form, is in Due Credit's
@@ -99,6 +100,14 @@ Citeproc's output changes between pandoc versions, so the expected results are
 for one version, 3.13. That's the built-in pandoc's version, and this flake
 pins the same one as pandoc's own static build for Linux, where CI runs. Move
 the two together, and the hashes in `src/core/built-in.ts` with them.
+
+Once a month, Codeberg runs `tests/pandoc.test.ts` against the newest pandoc
+(`.forgejo/workflows/newest-pandoc.yml`), with `PANDOC_OTHER_VERSION=1`,
+which skips the test that the pandoc is 3.13. A failure emails the
+repository's owner. It's either citeproc formatting something differently,
+which moving to the newer pandoc fixes, or a real break, which wants a fix in
+the filters. It runs on Codeberg because GitHub turns off a scheduled
+workflow after 60 days without a commit.
 
 ### A new version
 

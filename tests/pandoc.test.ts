@@ -39,8 +39,10 @@ beforeEach(() => new Promise((resolve) => setImmediate(resolve)));
 
 // The expected output is one pandoc's: citeproc formats some entries
 // differently from one version to the next. A run against another pandoc says
-// so here, before its differences turn up below looking like bugs.
-describe.skipIf(!installed())('the pandoc these tests run against', () => {
+// so here, before its differences turn up below looking like bugs. A run
+// meant for another pandoc, as the monthly one against the newest
+// (.forgejo/workflows/newest-pandoc.yml), sets PANDOC_OTHER_VERSION=1.
+describe.skipIf(!installed() || process.env.PANDOC_OTHER_VERSION === '1')('the pandoc these tests run against', () => {
 	it(`is pandoc ${BUILT_IN.version}, the built-in pandoc's version and CI's`, () => {
 		const found = execFileSync('pandoc', ['--version'], { encoding: 'utf8' }).split('\n')[0];
 		expect(found, `Run the tests in nix develop, which has pandoc ${BUILT_IN.version}`).toBe(`pandoc ${BUILT_IN.version}`);

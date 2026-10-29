@@ -1,0 +1,43 @@
+# Once a month, the filter tests against the newest pandoc, which anyone who
+# installs pandoc themselves soon has. The expected output is the pinned
+# pandoc's (README), so a failure is one of two things: pandoc formatting
+# something differently, which moving to the newer pandoc fixes when it
+# suits, or something that broke, which wants a fix here. Either way the
+# repository's owner gets an email.
+#
+# This runs on Codeberg, not the GitHub mirror, because GitHub turns off a
+# scheduled workflow after 60 days without a commit, and this repository is
+# meant to go that long.
+name: Newest pandoc
+
+on:
+    schedule:
+        - cron: '17 6 3 * *'
+    workflow_dispatch:
+
+enable-email-notifications: true
+
+jobs:
+    newest-pandoc:
+        # Lazy: it may start hours late, which a monthly check doesn't mind.
+        runs-on: codeberg-small-lazy
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+            # The newest release, from where GitHub's page for the latest one
+            # redirects to, which needs no API call from a shared runner.
+            - name: Pandoc
+              run: |
+                  tag=$(curl -fsSLo /dev/null -w '%{url_effective}' https://github.com/jgm/pandoc/releases/latest)
+                  version=${tag##*/}
+                  mkdir -p /tmp/pandoc
+                  curl -fsSL "https://github.com/jgm/pandoc/releases/download/$version/pandoc-$version-linux-amd64.tar.gz" | tar -xz -C /tmp/pandoc --strip-components=1
+                  echo /tmp/pandoc/bin >> "$GITHUB_PATH"
+            - run: pandoc --version | head -n 1
+            - run: npm ci --ignore-scripts
+            - run: npx vitest run tests/pandoc.test.ts
+              env:
+                  PANDOC_OTHER_VERSION: '1'
