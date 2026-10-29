@@ -12,14 +12,16 @@ import { inFolder } from './paths';
 /**
  * `@article{key,` and every other entry type, as the filter's `read_bib` reads
  * it: the @ opens a line, after spaces or tabs, and the key can be on the next.
- * A line ends at \n alone, as it does for the filter.
+ * A line ends at \n alone, as it does for the filter. The type is letters and
+ * digits, Lua's `%w`, and a space is an ASCII one, Lua's `%s`, so a key with a
+ * no-break space in it is read whole, as the filter reads it.
  */
-const ENTRY = /(?:^|\n)[ \t\uFEFF]*@\w+\s*[{(]\s*([^,\s]+)\s*,/g;
+const ENTRY = /\n[ \t]*@[A-Za-z0-9]+[ \t\n\v\f\r]*[{(][ \t\n\v\f\r]*([^, \t\n\v\f\r]+)[ \t\n\v\f\r]*,/g;
 
-/** Every entry key in a `.bib` file. */
+/** Every entry key in a `.bib` file. A byte order mark counts only at its start, as for the filter. */
 export function bibKeys(bib: string): Set<string> {
 	const keys = new Set<string>();
-	for (const match of bib.matchAll(ENTRY)) if (match[1]) keys.add(match[1]);
+	for (const match of `\n${bib.replace(/^\uFEFF/, '')}`.matchAll(ENTRY)) if (match[1]) keys.add(match[1]);
 	return keys;
 }
 

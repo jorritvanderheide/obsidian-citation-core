@@ -32,6 +32,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
   a `--bibliography` of its own. Pandoc ignores `-M bibliography=…` when
   there's one, so then the check no longer reads keys from it. A bundled
   `-sM bibliography=…` is read too.
+- The check reads a `.bib`'s keys exactly as the filter does: a byte order
+  mark only at the start of the file, an entry type of letters and digits,
+  and a key with a no-break space in it whole. It listed a few citations as
+  lost that weren't, and missed a few that were.
 
 ## 0.4.0
 

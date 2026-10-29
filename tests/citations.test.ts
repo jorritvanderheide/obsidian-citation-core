@@ -119,4 +119,8 @@ describe('bibKeys, line by line as the filter reads it', () => {
 	it('takes only \\n for a line break', () => {
 		expect([...bibKeys('@article{x,\r@book{y,\r')]).toEqual(['x']);
 	});
+
+	it('takes a byte order mark only at the start, a type of letters and digits, and only ASCII spaces', () => {
+		expect([...bibKeys('\uFEFF@article{a,\n\uFEFF@article{b,\n@my_type{c,\n@article{d\u00A0e,\n@article\u00A0{f,\n')]).toEqual(['a', 'd\u00A0e']);
+	});
 });

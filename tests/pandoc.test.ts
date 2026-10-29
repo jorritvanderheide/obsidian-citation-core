@@ -189,6 +189,16 @@ describe.skipIf(!installed())('one rule, written twice', () => {
 		expect(cited).toEqual(['a', 'split']);
 	});
 
+	// A byte order mark counts only at the start of the file, the type is
+	// letters and digits, and a space is an ASCII one.
+	it('reads the same keys as bibKeys from a byte order mark, an odd type and a no-break space', () => {
+		const odd = join(dir, 'odd.bib');
+		writeFileSync(odd, '\uFEFF@book{first, title={F}, author={F, Fay}, year={2001}}\n\uFEFF@book{bommed, title={B}, author={B, Bo}, year={2002}}\n@my_type{under, title={U}, author={U, Ute}, year={2003}}\n@book{nb\u00A0sp, title={N}, author={N, Ned}, year={2004}}\n');
+		const keys = bibKeys(readFileSync(odd, 'utf8'));
+		expect([...keys]).toEqual(['first', 'nb\u00A0sp']);
+		for (const key of ['first', 'bommed', 'under', 'nb\u00A0sp']) expect(filtered(`[[${key}]]`, odd)?.key === key).toBe(keys.has(key));
+	});
+
 	it.each(['a', 'Literature/a', 'Literature/a.md', 'a#p. 12', 'a#^block', '@a', 'Literature/@a.md#Claim', '@@a', 'a.pdf', 'ab', 'a.md.md', 'Notes/b a'])(
 		'[[%s]] is a citation in the filter exactly when keyOf names the key',
 		(target) => {
