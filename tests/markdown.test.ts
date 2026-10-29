@@ -439,6 +439,22 @@ describe('wikilinked, on what is no link to a note', () => {
 	});
 });
 
+describe('wikilinked, around math', () => {
+	// Math is found as pandoc finds it, so a link next to dollar signs that are
+	// no math is still read, and one inside math is not.
+	it('reads a link between escaped dollars, prices and math that a blank line ends', () => {
+		expect(wikilinked('\\$5 for [x](y.md), \\$6')).toBe('\\$5 for [[y\\|x]], \\$6');
+		expect(wikilinked('$5 for [x](y.md) or $6')).toBe('$5 for [[y\\|x]] or $6');
+		expect(wikilinked('$$a\n\n[x](y.md) $$')).toBe('$$a\n\n[[y\\|x]] $$');
+		expect(wikilinked('$a\nb\n[x](y.md) c$')).toBe('$a\nb\n[[y\\|x]] c$');
+	});
+
+	it('leaves a link in math alone, across one line break, and past an escaped dollar in it', () => {
+		const kept = '$a +\n[x](y.md)$ and $a \\$ [x](y.md)$ and $$\n[x](y.md)\n$$ and $x$';
+		expect(wikilinked(kept)).toBe(kept);
+	});
+});
+
 describe('wikilinks, with a bracket in the alias', () => {
 	it('reads a ] in an alias, as pandoc does, unless it closes the link', () => {
 		expect(wikilinks('[[k|a [b] c]] and [[k2|x]y]]')).toEqual([

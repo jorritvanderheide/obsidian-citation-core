@@ -24,6 +24,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
   escaped backslash, `\\[x](y.md)`, is read too. The pipe of the wikilink it
   becomes is always `\|`, so a link in a table row without a leading `|` no
   longer splits its cell.
+- Math is found as pandoc finds it. A dollar sign escaped with a backslash,
+  `\$5`, starts no math, math doesn't run past a blank line, and `$…$` can
+  hold one line break. A link next to a price is read, and the list of what a
+  post won't show no longer takes prices for math.
 
 ## 0.4.0
 

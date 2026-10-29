@@ -431,8 +431,22 @@ const LINK = /(?<!!)\[\[([^\]|]+)(?:\|((?:[^\]]|\](?!\]))*))?\]\]/g;
  */
 const MARKDOWN_LINK = /(?<!!)(?<!(?<!\\)(?:\\\\)*\\)\[(?!\^)((?:[^[\]]|\[[^[\]]*\])*)\]\((<[^>\n]*>|(?:[^()\s]|\([^()\s]*\))+)(?:[ \t]+(?:"[^"\n]*"|'[^'\n]*'|\([^()\n]*\)))?\)/g;
 
-/** Math, `$$…$$` or `$…$`, which looks like Markdown and isn't. */
-const MATH = /(\$\$[\s\S]*?\$\$|\$(?=\S)[^$\n]*?\S\$(?!\d))/;
+/** Not after an odd run of backslashes, which escapes what follows. */
+const UNESCAPED = String.raw`(?<!(?<!\\)(?:\\\\)*\\)`;
+
+/** A character of `$…$` on one line: anything but `$`, or what a backslash escapes. */
+const IN_LINE = String.raw`(?:[^$\\\n]|\\[^\n])`;
+
+/**
+ * Math, `$$…$$` or `$…$`, which looks like Markdown and isn't, found as pandoc
+ * finds it. A `$` that a backslash escapes opens and closes nothing, and
+ * neither kind runs past a blank line. `$…$` holds one line break at most,
+ * starts and ends on something other than a space, and isn't math when a
+ * digit follows it: `$5 and $6`.
+ */
+const MATH = new RegExp(
+	String.raw`(${UNESCAPED}\$\$(?:(?!\n[ \t]*\n)[^\\]|\\[^\n])*?\$\$|${UNESCAPED}\$(?=\S)${IN_LINE}*?(?:\n${IN_LINE}*?)?(?:[^\s$\\]|\\[^\n])\$(?!\d))`,
+);
 
 /** Prose without its math changed, the way `outsideCode` leaves code. */
 function outsideMath(prose: string, change: (text: string) => string): string {
