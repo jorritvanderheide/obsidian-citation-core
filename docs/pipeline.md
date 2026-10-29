@@ -70,6 +70,10 @@ highlights, lists without a blank line before them, hard line breaks unless
 strict line breaks are on) and pandoc's own table syntaxes and blank-line rules
 switched off, because Obsidian doesn't have them.
 
+Raw TeX is off as well. Obsidian shows a backslash before a word as it is,
+`\slash` and `C:\path`, and pandoc read those as LaTeX commands and left them
+out. A command meant for LaTeX goes in as a raw block, `` `\newpage`{=latex} ``.
+
 Pandoc's implicit figures are off too. Pandoc would make an image alone in its
 paragraph a figure, with its alt text as the caption, which Obsidian never
 shows. A figure is an image with an italic line right under it instead:

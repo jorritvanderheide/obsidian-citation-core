@@ -114,11 +114,14 @@ export interface Run {
  * And an image alone in its paragraph stays an image: pandoc would make it a
  * figure with its alt text as the caption, which Obsidian never shows. A
  * caption is an italic line under the image (`obsidian.lua`).
+ * Raw TeX is off too: Obsidian shows `\slash` and `C:\path` as written, and
+ * pandoc took them for LaTeX commands and dropped them. A LaTeX command goes
+ * in as a raw block, `` `\newpage`{=latex} ``.
  */
 function reading(run: Pick<Run, 'hardLineBreaks' | 'metadata' | 'obsidian' | 'filter' | 'bibliography' | 'resourcePath'>): string[] {
 	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
 	const args = [
-		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
+		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures-raw_tex`,
 		`--metadata-file=${run.metadata}`,
 		`--lua-filter=${run.obsidian}`,
 		`--lua-filter=${run.filter}`,

@@ -274,6 +274,25 @@ describe.skipIf(!installed())('a line break', () => {
 	});
 });
 
+// Obsidian shows a backslash before a letter as it is, as CommonMark does.
+// Read as raw TeX, `\slash` was a command and went missing from every export.
+describe.skipIf(!installed())('a backslash', () => {
+	const exported = (format: 'md' | 'tex', input: string) => {
+		const output = join(dir, `backslash.${format}`);
+		execFileSync('pandoc', pandocArgs(format, { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: false, referenceDoc: null, extra: [], resourcePath: dir, output }), { input });
+		return readFileSync(output, 'utf8');
+	};
+
+	it('before a word or in a path exports as written', () => {
+		expect(cite('Back\\slash and C:\\path\\x.')).toBe('Back\\slash and C:\\path\\x.');
+		expect(exported('tex', 'See C:\\path\\x and \\newpage here.\n').replace(/\s+/g, ' ')).toBe('See C:\\textbackslash path\\textbackslash x and \\textbackslash newpage here. ');
+	});
+
+	it('still reaches LaTeX as a command in a raw block, which is how to write one now', () => {
+		expect(exported('tex', 'Before.\n\n`\\newpage`{=latex}\n\nAfter.\n')).toBe('Before.\n\n\\newpage\n\nAfter.\n');
+	});
+});
+
 describe.skipIf(!installed())('a highlight', () => {
 	const exported = (format: 'md' | 'tex') => {
 		const output = join(dir, `marked.${format}`);

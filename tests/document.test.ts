@@ -105,7 +105,7 @@ describe('pandocArgs', () => {
 	it('runs the filter before citeproc, which can only cite what the filter made', () => {
 		const args = pandocArgs('docx', run);
 		expect(args.indexOf('--lua-filter=/tmp/f.lua')).toBeLessThan(args.indexOf('--citeproc'));
-		expect(args[0]).toBe('--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures');
+		expect(args[0]).toBe('--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures-raw_tex');
 		expect(args.indexOf('--lua-filter=/tmp/o.lua')).toBeLessThan(args.indexOf('--lua-filter=/tmp/f.lua'));
 		expect(args).toContain('--metadata-file=/tmp/m.json');
 		expect(args.at(-1)).toBe('--output=/out/n.docx');
@@ -243,7 +243,7 @@ describe('a post', () => {
 		expect(markdown.indexOf('--citeproc')).toBeLessThan(markdown.indexOf('--lua-filter=p.lua'));
 		expect(markdown.indexOf('--lua-filter=p.lua')).toBeLessThan(markdown.indexOf('--lua-filter=a.lua'));
 		expect(markdown).toContain('--to=gfm-raw_html');
-		expect(markdown[0]).toMatch(/-implicit_figures$/);
+		expect(markdown[0]).toMatch(/-implicit_figures-raw_tex$/);
 		expect(markdown).toContain('--metadata=references-out=r.json');
 		const html = postArgs('html', run);
 		expect(html).toContain('--to=html');
