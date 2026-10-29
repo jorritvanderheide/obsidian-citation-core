@@ -21,7 +21,7 @@ it into its own `main.js` and connects it to Obsidian.
 | `pandoc/` | The Lua filters. |
 | `fonts/` | Open Sans, for PDF. |
 | `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
-| `tests/` | A test for each file in `src/core/`, and `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc. |
+| `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; and `conformance.test.ts`, which runs only on a vault you point it at. |
 | `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
 | `flake.nix` | The pinned pandoc, as pandoc's static build and its WebAssembly build, and the checks. |
 | `docs/pipeline.md` | Every step from a note to pandoc's input, in order. |
