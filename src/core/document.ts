@@ -263,7 +263,6 @@ const REFUSED: [string[], string][] = [
 	[['-t', '-w', '--to', '--write'], 'the export command you run picks the format'],
 	[['-d', '--defaults'], 'a defaults file could change everything Due Credit sets up, including where the file goes'],
 	[['--extract-media', '--log'], 'it writes a file of its own, and that file could end up in your vault'],
-	[['+RTS'], 'it gives options to the runtime pandoc runs on, which can write files of its own'],
 	[['-h', '--help', '-v', '--version', '-D', '--print-default-template', '--print-default-data-file', '--print-highlight-style', '--list-input-formats', '--list-output-formats', '--list-extensions', '--list-highlight-languages', '--list-highlight-styles', '--dump-args', '--bash-completion'], "it only prints something, and doesn't export anything"],
 ];
 
@@ -278,7 +277,6 @@ const VALUED = new Set(['f', 'r', 't', 'w', 'o', 'M', 'd', 'V', 'H', 'B', 'A', '
  * that takes a value, whose value is the rest: `-Mdate=2024` is no `-d`.
  */
 function gives(arg: string, option: string): boolean {
-	if (option.startsWith('+')) return arg.startsWith(option);
 	if (arg.startsWith('--')) {
 		const name = arg.slice(2).split('=')[0] ?? '';
 		return option.startsWith('--') && name !== '' && option.startsWith(`--${name}`);

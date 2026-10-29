@@ -91,12 +91,11 @@ describe('refused', () => {
 		expect(refused(['-Mdate=2024', '-Vdocumentclass=book', '-Lfilter-to.lua', '-T', 'dot', '-Ffoo'])).toBeNull();
 	});
 
-	// Pandoc hands what follows +RTS to the runtime it is built on, which can
-	// write files of its own: -S/path writes statistics there.
-	it('refuses options for the runtime pandoc runs on', () => {
-		expect(refused(['+RTS', '-S/tmp/x', '-RTS'])?.arg).toBe('+RTS');
-		expect(refused(['+RTS', '-S/tmp/x', '-RTS'])?.why).toContain('runtime');
-		expect(refused(['--toc', '+RTS'])?.arg).toBe('+RTS');
+	// Options for the runtime pandoc runs on, like +RTS -N4 for speed, go through:
+	// refusing them would stop exports that worked, and the ones that write a file
+	// do no more than a --lua-filter of yours could.
+	it('passes on options for the runtime pandoc runs on', () => {
+		expect(refused(['+RTS', '-N4', '-RTS'])).toBeNull();
 	});
 });
 

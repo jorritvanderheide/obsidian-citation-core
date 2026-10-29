@@ -4,6 +4,13 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
+## 0.3.1
+
+- Pandoc arguments let `+RTS` through again, as before 0.3.0. Refusing it
+  would stop exports that use it, like `+RTS -N4` to run faster, and its
+  options that write a file do no more than a `--lua-filter` of yours could.
+  No plugin released 0.3.0.
+
 ## 0.3.0
 
 - A backslash before a word exports as written, `C:\path\x` and `Back\slash`,
