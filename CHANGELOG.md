@@ -13,6 +13,11 @@ Each version is a tag, and a plugin pins only a tagged commit.
   and earlier sometimes every citation in an export. It still runs, and
   `pandocFor` gives a notice for the plugin to show, once a session. Debian 13
   and Ubuntu 24.04 install a pandoc in that range.
+- A backslash before a space goes to pandoc as written again, which reads it
+  as a space that doesn't break. 0.3.2 doubled it so it showed, but that also
+  doubled backslashes in a wikilink's target and alias, in indented code and
+  in raw HTML. To show a backslash before a space, write `\\`, as Obsidian
+  shows it too.
 
 ## 0.4.0
 

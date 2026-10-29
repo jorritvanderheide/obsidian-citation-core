@@ -7,7 +7,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
 import { bibKeys, keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
-import { footnotes, literalBackslashes } from '../src/core/markdown';
+import { footnotes } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
 
 function installed(program = 'pandoc'): boolean {
@@ -315,7 +315,6 @@ describe.skipIf(!installed())('a backslash', () => {
 
 	it('before a word or in a path exports as written', () => {
 		expect(cite('Back\\slash and C:\\path\\x.')).toBe('Back\\slash and C:\\path\\x.');
-		expect(cite(literalBackslashes('In C:\\temp\\ and a \\ b.'))).toBe('In C:\\temp\\ and a \\ b.');
 		expect(exported('tex', 'See C:\\path\\x and \\newpage here.\n').replace(/\s+/g, ' ')).toBe('See C:\\textbackslash path\\textbackslash x and \\textbackslash newpage here. ');
 	});
 

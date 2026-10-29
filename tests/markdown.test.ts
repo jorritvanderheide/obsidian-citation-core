@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, literalBackslashes, unshown, wikilinked, wikilinks } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, unshown, wikilinked, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	it('concatenates back to the note', () => {
@@ -422,15 +422,6 @@ describe('wikilinked, on what is no link to a note', () => {
 	it('leaves a link alone whose path decodes to what a wikilink can not hold', () => {
 		const kept = '[a](x%7Cy.md) [b](x%5D.md) [c](a%23b.md) [d [e] f](g.md)';
 		expect(wikilinked(kept)).toBe(kept);
-	});
-});
-
-describe('literalBackslashes', () => {
-	// Pandoc reads a backslash before a space as a space that doesn't break;
-	// Obsidian shows the backslash.
-	it('writes a backslash before a space so it shows, and leaves an escaped one, code and math alone', () => {
-		expect(literalBackslashes('> C:\\temp\\ [[x]] and a \\ b')).toBe('> C:\\temp\\\\ [[x]] and a \\\\ b');
-		expect(literalBackslashes('two \\\\ stay, and `a\\ b` and $a\\ b$')).toBe('two \\\\ stay, and `a\\ b` and $a\\ b$');
 	});
 });
 
