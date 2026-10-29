@@ -28,6 +28,10 @@ Each version is a tag, and a plugin pins only a tagged commit.
   `\$5`, starts no math, math doesn't run past a blank line, and `$…$` can
   hold one line break. A link next to a price is read, and the list of what a
   post won't show no longer takes prices for math.
+- `bibliographiesIn` takes a second argument, whether the plugin gives pandoc
+  a `--bibliography` of its own. Pandoc ignores `-M bibliography=…` when
+  there's one, so then the check no longer reads keys from it. A bundled
+  `-sM bibliography=…` is read too.
 
 ## 0.4.0
 

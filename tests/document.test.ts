@@ -269,8 +269,14 @@ describe('a post', () => {
 });
 
 describe('bibliographiesIn', () => {
-	it('finds one given as metadata too', () => {
+	it('finds one given as metadata too, in a bundle as well', () => {
 		expect(bibliographiesIn(['-M', 'bibliography=/d.bib', '-Mbibliography=/e.bib', '--metadata=bibliography:/f.bib', '-M', 'lang=nl'])).toEqual(['/d.bib', '/e.bib', '/f.bib']);
+		expect(bibliographiesIn(['-sM', 'bibliography=/g.bib', '-sMbibliography=/h.bib', '-sMlang=nl'])).toEqual(['/g.bib', '/h.bib']);
+	});
+
+	it('leaves out the metadata ones when a --bibliography is given, as pandoc ignores them then', () => {
+		expect(bibliographiesIn(['-M', 'bibliography=/d.bib', '--bibliography=/a.bib'])).toEqual(['/a.bib']);
+		expect(bibliographiesIn(['-M', 'bibliography=/d.bib'], true)).toEqual([]);
 	});
 
 	it('finds every bibliography your arguments give, however the option is written', () => {

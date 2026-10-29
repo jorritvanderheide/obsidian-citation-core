@@ -292,21 +292,27 @@ function gives(arg: string, option: string): boolean {
 /**
  * The bibliographies your own arguments give pandoc, with `--bibliography`, or
  * as metadata with `-M bibliography=…`, written however pandoc takes them, so
- * the check can read their keys too.
+ * the check can read their keys too. Pandoc reads the metadata ones only when
+ * no `--bibliography` is given, in `args` or by the plugin itself (`given`).
  */
-export function bibliographiesIn(args: string[]): string[] {
-	return args.flatMap((arg, at) => {
+export function bibliographiesIn(args: string[], given = false): string[] {
+	const options: string[] = [];
+	const metadata: string[] = [];
+	args.forEach((arg, at) => {
 		if (gives(arg, '--bibliography')) {
 			const value = arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : args[at + 1];
-			return value ? [value] : [];
+			if (value) options.push(value);
+			return;
 		}
-		if (!gives(arg, '--metadata') && !gives(arg, '-M')) return [];
-		// The value is attached, `-Mkey=…` or `--metadata=key=…`, or the next argument.
-		const attached = arg.startsWith('--') ? (arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : '') : arg.slice(2);
+		if (!gives(arg, '--metadata') && !gives(arg, '-M')) return;
+		// The value is attached, `-Mkey=…`, `-sMkey=…` or `--metadata=key=…`, or
+		// the next argument. `gives` found the M before any letter taking a value.
+		const attached = arg.startsWith('--') ? (arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : '') : arg.slice(arg.indexOf('M') + 1);
 		const value = attached || args[at + 1] || '';
 		const bibliography = /^bibliography[=:](.+)$/.exec(value)?.[1];
-		return bibliography ? [bibliography] : [];
+		if (bibliography) metadata.push(bibliography);
 	});
+	return options.length > 0 || given ? options : metadata;
 }
 
 /** The first argument Due Credit will not pass on, and why, or null. */
