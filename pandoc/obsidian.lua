@@ -51,3 +51,23 @@ function Span(span)
   if output:match('%.pdf$') then return nil end
   return span.content
 end
+
+--- An image with an italic line right under it, `![[bed.png|Wooden bed]]`
+--- and `*A raised bed in March.*` on the next line: a figure, captioned with
+--- the italic line, the image keeping its alt text. Obsidian has no captions,
+--- and this is how one looks there. An image without one stays an image, since
+--- its alt text is for whoever can't see it, and no caption.
+---
+--- GitHub's Markdown has no figures, so a post in it keeps the image and its
+--- caption as two paragraphs, the caption in italics: how a site finds a
+--- figure in a post (In the Open's `docs/micropub.md`, Links and images).
+function Para(para)
+  local inlines = para.content
+  if #inlines ~= 3 or inlines[1].t ~= 'Image' or inlines[3].t ~= 'Emph' then return nil end
+  if inlines[2].t ~= 'SoftBreak' and inlines[2].t ~= 'LineBreak' then return nil end
+  local image, caption = inlines[1], inlines[3].content
+  if FORMAT == 'gfm' then
+    return { pandoc.Para({ image }), pandoc.Para({ pandoc.Emph(caption) }) }
+  end
+  return pandoc.Figure({ pandoc.Plain({ image }) }, { long = { pandoc.Plain(caption) } })
+end

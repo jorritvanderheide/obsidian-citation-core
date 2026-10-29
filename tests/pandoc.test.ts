@@ -173,6 +173,18 @@ describe.skipIf(!installed())('obsidian.lua', () => {
 		expect(markdown('> [!warning] Only a title\n')).toBe('> **Only a title**\n');
 	});
 
+	it('makes an image with an italic line under it a figure, with that caption, and leaves an image alone as it is', () => {
+		expect(markdown('![Wooden bed](bed.png){width=300px}\n*A raised bed in March.*\n')).toBe('![A raised bed in March.](bed.png){alt="Wooden bed" width="300px"}\n');
+		expect(markdown('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n')).toBe('Before.\n\n![Wooden bed](bed.png)\n\nAfter.\n');
+		expect(markdown('![Wooden bed](bed.png) and *words*\n')).toBe('![Wooden bed](bed.png) and *words*\n');
+	});
+
+	it('reads the caption under a line break too, as Obsidian has it with strict line breaks off', () => {
+		const output = join(dir, 'caption.md');
+		execFileSync('pandoc', pandocArgs('md', { obsidian, filter, afterCiteproc, template, fonts, metadata, bibliography: bib, csl: null, hardLineBreaks: true, referenceDoc: null, extra: [], resourcePath: dir, output }), { input: '![Wooden bed](bed.png)\n*A raised bed.*\n' });
+		expect(readFileSync(output, 'utf8')).toBe('![A raised bed.](bed.png){alt="Wooden bed"}\n');
+	});
+
 	it('reads a callout inside a callout, without the blank line pandoc wants', () => {
 		expect(markdown('> [!info|wide] Outer\n> > [!quote] Inner\n> > Said.\n')).toBe('> **Outer**\n>\n> > **Inner**\\\n> > Said.\n');
 	});
@@ -411,6 +423,12 @@ describe.skipIf(!installed())('a post', () => {
 		const html = post('html', image).text;
 		expect(html).toContain('<img src="https://bw20.nl/media/bed.png" alt="A raised bed" />');
 		expect(html).not.toContain('figcaption');
+	});
+
+	it('makes an image with an italic line under it a figure: in HTML with its caption, in Markdown as the image and its caption in italics', () => {
+		const figure = 'Before.\n\n![Wooden bed](<https://bw20.nl/media/bed.png>)\n*A raised bed in March.*\n\nAfter.\n';
+		expect(post('markdown', figure).text).toBe('Before.\n\n![Wooden bed](https://bw20.nl/media/bed.png)\n\n*A raised bed in March.*\n\nAfter.\n');
+		expect(post('html', figure).text).toContain('<figure>\n<img src="https://bw20.nl/media/bed.png" alt="Wooden bed" />\n<figcaption>A raised bed in March.</figcaption>\n</figure>');
 	});
 
 	it('as Markdown without citations, has none to take out', () => {

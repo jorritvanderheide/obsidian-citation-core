@@ -110,6 +110,9 @@ export interface Run {
  * not have go too, since they read the same block as a table, and so do the
  * blank lines pandoc wants before a list, a quote and a heading, which
  * Obsidian does not: a callout inside a callout is a quote right after a line.
+ * And an image alone in its paragraph stays an image: pandoc would make it a
+ * figure with its alt text as the caption, which Obsidian never shows. A
+ * caption is an italic line under the image (`obsidian.lua`).
  *
  * The order matters: pandoc runs filters and citeproc in the order they are
  * given, and citeproc can only resolve citations the filter has already made.
@@ -128,7 +131,7 @@ export interface Run {
 export function pandocArgs(format: Format, run: Run): string[] {
 	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';
 	const args = [
-		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header`,
+		`--from=markdown+wikilinks_title_after_pipe+mark+lists_without_preceding_blankline${breaks}-yaml_metadata_block-simple_tables-multiline_tables-blank_before_blockquote-blank_before_header-implicit_figures`,
 		`--metadata-file=${run.metadata}`,
 		`--lua-filter=${run.obsidian}`,
 		`--lua-filter=${run.filter}`,
@@ -366,8 +369,6 @@ export interface PostRun {
  * - HTML is finished for any site: citations as words, the reference list at
  *   the end, headed.
  * - Neither wraps lines: a site reflows the text itself.
- * - An image alone in its paragraph stays an image. Pandoc would make it a
- *   figure with its alt text as the caption, which Obsidian never shows.
  */
 export function postArgs(post: Post, run: PostRun): string[] {
 	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';

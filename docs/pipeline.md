@@ -69,6 +69,12 @@ highlights, lists without a blank line before them, hard line breaks unless
 strict line breaks are on) and pandoc's own table syntaxes and blank-line rules
 switched off, because Obsidian doesn't have them.
 
+Pandoc's implicit figures are off too. Pandoc would make an image alone in its
+paragraph a figure, with its alt text as the caption, which Obsidian never
+shows. A figure is an image with an italic line right under it instead:
+`pandoc/obsidian.lua` makes the line its caption, and the image keeps its alt
+text.
+
 Pandoc's own markdown has to be the reader, because its CommonMark reader has
 no `[@key]` citations.
 
@@ -84,11 +90,9 @@ its post (`linkPosts`, after `citeByKey`). A link to a note of your own that
 has no post is listed in `missing.unpublished`, which is read from the note as
 written, like the other checks.
 
-`postArgs` reads the note the same way, with one exception: an image alone in
-its paragraph stays an image. For a document, pandoc makes it a figure with its
-alt text as the caption, which a site would show under the image, and Obsidian
-never does. It moves every heading a level down, because the site shows the
-title as the page's one level 1 heading, and makes one of two things:
+`postArgs` reads the note the same way. It moves every heading a level down,
+because the site shows the title as the page's one level 1 heading, and makes
+one of two things:
 
 - **Markdown**, GitHub's without raw HTML, for a site that takes the
   references extension. With `link-citations`, each citation links to its
