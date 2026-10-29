@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-citation-core",
-	"version": "0.3.2",
+	"version": "0.4.0",
 	"description": "How a note becomes pandoc's input, with its links turned into real citations: shared by Due Credit and its sibling plugins.",
 	"private": true,
 	"type": "module",
