@@ -104,7 +104,7 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 		options.keys ? missingKeys(targets, named, options.keys) : [];
 	const missing = {
 		papers: check(({ linkpath }) => keyFor(linkpath)),
-		unresolved: check(({ target, linkpath }) => (linkpath !== '' && vault.resolve(linkpath) === null ? keyOf(target) : null)),
+		unresolved: check(({ target, linkpath }) => (linkpath !== '' && vault.resolve(linkpath) === null ? keyOf(target, options.keys ?? undefined) : null)),
 		unpublished: options.postOf ? unpublished(targets, resolve, keyFor, options.postOf) : [],
 	};
 

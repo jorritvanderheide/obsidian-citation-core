@@ -9,6 +9,8 @@ const notes: Record<string, Linked> = {
 	'figure.png': { path: 'Attachments/figure.png', file: 'C:\\v\\Attachments\\figure.png', frontmatter: undefined },
 	// Obsidian resolves an empty linkpath to the note itself: here, a paper note.
 	'': { path: 'Literature/lindqvist2025.md', file: '/v/Literature/lindqvist2025.md', frontmatter: { citekey: 'lindqvist2025' } },
+	// Named by Paper Trail for a key a note's name can't have.
+	'jones-2019': { path: 'Literature/jones-2019.md', file: '/v/Literature/jones-2019.md', frontmatter: { citekey: 'jones/2019' } },
 };
 const vault: Vault = {
 	resolve: (linkpath) => notes[linkpath] ?? null,
@@ -55,6 +57,14 @@ describe('prepare', () => {
 
 	it('leaves an embedded note out, and keeps an embedded image', () => {
 		expect(prepare('Intro.\n\n![[My idea]]\n\n![[figure.png]]\n', vault, options).markdown).toBe('Intro.\n\n\n![](<C:/v/Attachments/figure.png>)\n');
+	});
+
+	it('points a renamed note at a key with a slash, and finds that key and one linked by it in the bibliography', () => {
+		const keys = new Set(['jones/2019']);
+		const { markdown, missing } = prepare('Quoted [[jones-2019|jones-2019, p. 12]] and [[jones/2019]].\n', vault, { ...options, keys });
+		expect(markdown).toContain('[[jones/2019|jones/2019, p. 12]]');
+		expect(missing.papers).toEqual([]);
+		expect(missing.unresolved).toEqual([]);
 	});
 
 	it('points only a link to a note with a key property at that key', () => {

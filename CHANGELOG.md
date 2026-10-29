@@ -15,6 +15,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
   works. 0.2.0 turned an in-text citation of such an entry into plain text.
 - Two bibliographies, the setting's and one under Pandoc arguments, are both
   read. Every wikilink citation came out as plain text with two.
+- A citation key with a slash in it, like `[[jones/2019]]`, is a citation. A
+  link read it as a folder and a name, so it came out as plain text, and the
+  check before an export didn't say so.
 
 ## 0.2.0
 

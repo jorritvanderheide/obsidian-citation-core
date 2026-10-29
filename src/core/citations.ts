@@ -34,10 +34,14 @@ export function linkpathOf(target: string): string {
 /**
  * The key a wikilink target names, as the filter's `key_of` reads it: without a
  * heading or block reference, a folder, `.md`, or the `@` that the Citations
- * plugin puts in front of a literature note's name.
+ * plugin puts in front of a literature note's name. Given the bibliography's
+ * keys, the whole path is tried first, since a key can have a slash in it:
+ * `[[jones/2019]]`.
  */
-export function keyOf(target: string): string {
+export function keyOf(target: string, keys?: Set<string>): string {
 	const path = linkpathOf(target);
+	const whole = path.replace(/\.md$/, '').replace(/^@/, '');
+	if (keys?.has(whole)) return whole;
 	return path
 		.slice(path.lastIndexOf('/') + 1)
 		.replace(/\.md$/, '')

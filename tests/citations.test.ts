@@ -18,7 +18,15 @@ describe('bibKeys', () => {
 
 describe('keyOf', () => {
 	it('reads the key however Obsidian wrote the target', () => {
-		expect(['key', 'Literature/key', 'Literature/key.md', 'key#p. 12', 'key#^block', '@key', 'Literature/@key.md#p. 3'].map(keyOf)).toEqual(['key', 'key', 'key', 'key', 'key', 'key', 'key']);
+		expect(['key', 'Literature/key', 'Literature/key.md', 'key#p. 12', 'key#^block', '@key', 'Literature/@key.md#p. 3'].map((target) => keyOf(target))).toEqual(['key', 'key', 'key', 'key', 'key', 'key', 'key']);
+	});
+
+	it('takes the whole path when it is a key, a slash and all, and the name after the folder when not', () => {
+		const keys = new Set(['jones/2019', 'a']);
+		expect(keyOf('jones/2019', keys)).toBe('jones/2019');
+		expect(keyOf('jones/2019.md#p. 4', keys)).toBe('jones/2019');
+		expect(keyOf('Literature/a', keys)).toBe('a');
+		expect(keyOf('jones/2019')).toBe('2019');
 	});
 });
 

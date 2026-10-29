@@ -100,8 +100,14 @@ end
 --- A leading `@` is dropped too: the Citations plugin and many templates name a
 --- literature note `@key`, so their links are `[[@key]]`, and those are the
 --- same citation as well.
+---
+--- A key can have a slash in it, which reads as a folder: `[[jones/2019]]`. So
+--- the whole path is tried as a key first, and the name after the folder only
+--- when the whole path isn't one.
 local function key_of(target)
   local path = target:gsub('[#^].*$', '')
+  local whole = path:gsub('%.md$', ''):gsub('^@', '')
+  if keys[whole] then return whole end
   local name = path:match('([^/]+)$') or path
   return (name:gsub('%.md$', ''):gsub('^@', ''))
 end

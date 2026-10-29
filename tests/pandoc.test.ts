@@ -29,7 +29,7 @@ writeFileSync(template, MARKDOWN_TEMPLATE);
 const metadata = join(dir, 'metadata.json');
 writeFileSync(metadata, '{}');
 const bib = join(dir, 'library.bib');
-writeFileSync(bib, '@article{a,\n  author = {A, Ann},\n  title = {First},\n  year = {2024}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  year = {2025}\n}\n@article{smith:2017,\n  author = {Smith, Sam},\n  title = {Colons},\n  year = {2017}\n}\n');
+writeFileSync(bib, '@article{a,\n  author = {A, Ann},\n  title = {First},\n  year = {2024}\n}\n@article{b,\n  author = {B, Bob},\n  title = {Second},\n  year = {2025}\n}\n@article{smith:2017,\n  author = {Smith, Sam},\n  title = {Colons},\n  year = {2017}\n}\n@article{jones/2019,\n  author = {Jones, Jo},\n  title = {Slashes},\n  year = {2019}\n}\n');
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 // Every test here runs pandoc synchronously, a second at a time on the built-in
@@ -109,6 +109,10 @@ describe.skipIf(!installed())('wikilink-citations.lua', () => {
 		// have one, as Better BibTeX allows, and a note's name never does.
 		['[[smith:2017]] says', '(Smith 2017) says'],
 		['[[smith:2017|smith:2017, p. 7]]', '(Smith 2017, 7)'],
+		// A key can have a slash too, which a link reads as a folder: the whole
+		// path is tried as a key first.
+		['[[jones/2019|jones/2019, p. 12]]', '(Jones 2019, 12)'],
+		['[[jones/2019]] says', '(Jones 2019) says'],
 		// Paper Trail's form, from Insert annotation, and Due Credit's Insert citation: everything around the key, in the alias.
 		['[[a|a, p. 4]]', '(A 2024, 4)'],
 		['[[a|see a, p. 4, emphasis added]]', '(see A 2024, 4, emphasis added)'],
@@ -192,6 +196,11 @@ describe.skipIf(!installed())('one rule, written twice', () => {
 
 	it('[[smith:2017]] is a citation in the filter, as keyOf names it, a colon and all', () => {
 		expect(filtered('[[smith:2017]]')?.key).toBe(keyOf('smith:2017'));
+	});
+
+	it('[[jones/2019]] is a citation in the filter, as keyOf names it given the keys', () => {
+		expect(filtered('[[jones/2019]]')?.key).toBe(keyOf('jones/2019', bibKeys(readFileSync(bib, 'utf8'))));
+		expect(filtered('[[Literature/a]]')?.key).toBe(keyOf('Literature/a', bibKeys(readFileSync(bib, 'utf8'))));
 	});
 
 	// Where `renameInAlias` finds the key is where `spelled` splits the alias.
