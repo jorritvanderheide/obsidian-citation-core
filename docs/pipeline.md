@@ -30,7 +30,8 @@ new step goes there, in its place in the order.
 10. **Resolve images** (`imageLinks`, then `imageEmbeds`). A markdown image
     of a file in the vault, `![A chart](figure.png)`, and an embed,
     `![[figure.png|300]]`, both become a markdown image of the file Obsidian
-    would show, the second 300 pixels wide. Images on the web stay as they are.
+    would show, the second 300 pixels wide; `![[figure.png|A chart|300]]` is
+    both. Images on the web stay as they are.
     Other embeds, such as notes, PDFs and canvases, are dropped.
 
 Then `documentMetadata` builds the metadata: the title (the lifted H1, the

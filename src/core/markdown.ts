@@ -359,8 +359,8 @@ const isImage = (target: string) => IMAGE.test(linkpathOf(target.trim()));
  *
  * Which file that is, is Obsidian's to say, so `resolve` asks it: a bare name
  * can live in any folder. An image it cannot resolve is left as written, so
- * pandoc's warning names it. `|300` is a width, as in Obsidian; any other text
- * after `|` is the image's description.
+ * pandoc's warning names it. `|300` is a width, as in Obsidian, alone or after
+ * a description, `|A chart|300`; any other text after `|` is the description.
  *
  * An embedded note is for whoever wrote it, like the note linked, and so is a
  * PDF or a canvas: all of them are dropped, and one on a line of its own takes
@@ -376,8 +376,9 @@ export function imageEmbeds(text: string, resolve: (linkpath: string) => string 
 			const path = resolve(linkpath);
 			if (path === null) return embed;
 
-			const width = /^\s*(\d+)(?:x\d+)?\s*$/.exec(label ?? '')?.[1];
-			const alt = width ? '' : (label ?? '').trim();
+			const sized = /^(?:(.*?)\\?\|)?\s*(\d+)(?:x\d+)?\s*$/.exec(label ?? '');
+			const width = sized?.[2];
+			const alt = (sized ? (sized[1] ?? '') : (label ?? '')).trim();
 			return `![${alt}](<${path}>)${width ? `{width=${width}px}` : ''}`;
 		}),
 	);

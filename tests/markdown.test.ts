@@ -302,8 +302,15 @@ describe('imageEmbeds', () => {
 		);
 	});
 
+	it('reads a width after a description, |A chart|300', () => {
+		expect(imageEmbeds('![[a.png|A chart|300]] ![[b.jpg|A bed|640x480]] ![[c.svg|300|A chart]]', resolve)).toBe(
+			'![A chart](</vault/Attachments/a.png>){width=300px} ![A bed](</vault/Attachments/b.jpg>){width=640px} ![300|A chart](</vault/Attachments/c.svg>)',
+		);
+	});
+
 	it('reads an embed whose pipe a table cell escaped', () => {
 		expect(imageEmbeds('| ![[a.png\\|300]] |', resolve)).toBe('| ![](</vault/Attachments/a.png>){width=300px} |');
+		expect(imageEmbeds('| ![[a.png\\|A chart\\|300]] |', resolve)).toBe('| ![A chart](</vault/Attachments/a.png>){width=300px} |');
 	});
 
 	it('leaves an unresolved image, for pandoc to name, and code as written', () => {
