@@ -79,7 +79,7 @@ switched off, because Obsidian doesn't have them.
 
 Raw TeX is off as well. Obsidian shows a backslash before a word as it is,
 `\slash` and `C:\path`, and pandoc read those as LaTeX commands and left them
-out. A command meant for LaTeX goes in as a raw block, `` `\newpage`{=latex} ``.
+out. A command meant for LaTeX goes in as a raw inline, `` `\newpage`{=latex} ``.
 
 Pandoc's implicit figures are off too. Pandoc would make an image alone in its
 paragraph a figure, with its alt text as the caption, which Obsidian never

@@ -116,7 +116,7 @@ export interface Run {
  * caption is an italic line under the image (`obsidian.lua`).
  * Raw TeX is off too: Obsidian shows `\slash` and `C:\path` as written, and
  * pandoc took them for LaTeX commands and dropped them. A LaTeX command goes
- * in as a raw block, `` `\newpage`{=latex} ``.
+ * in as a raw inline, `` `\newpage`{=latex} ``.
  */
 function reading(run: Pick<Run, 'hardLineBreaks' | 'metadata' | 'obsidian' | 'filter' | 'bibliography' | 'resourcePath'>): string[] {
 	const breaks = run.hardLineBreaks ? '+hard_line_breaks' : '';

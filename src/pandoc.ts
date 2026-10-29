@@ -42,7 +42,7 @@ export async function withFiles<T>(
 	metadata: Record<string, unknown>,
 	use: (files: { obsidian: string; filter: string; afterCiteproc: string; postReferences: string; template: string; fonts: string; metadata: string; references: string }) => Promise<T>,
 ): Promise<T> {
-	const dir = await mkdtemp(join(tmpdir(), 'obsidian-due-credit-'));
+	const dir = await mkdtemp(join(tmpdir(), 'obsidian-citation-core-'));
 	try {
 		const files = {
 			obsidian: join(dir, 'obsidian.lua'),
@@ -162,7 +162,7 @@ export function builtInPandoc(module: WebAssembly.Module, vault: string): Pandoc
  * three open for us to close. `input` null reads no note, for `--dump-args`.
  */
 export async function runWasi(module: WebAssembly.Module, preopens: Record<string, string>, args: string[], input: string | null): Promise<{ code: number; stdout: string; stderr: string }> {
-	const dir = await mkdtemp(join(tmpdir(), 'obsidian-pandoc-'));
+	const dir = await mkdtemp(join(tmpdir(), 'obsidian-citation-core-'));
 	const files = { note: join(dir, 'note'), stdin: join(dir, 'stdin'), stdout: join(dir, 'stdout'), stderr: join(dir, 'stderr') };
 	try {
 		await writeFile(files.stdin, '');

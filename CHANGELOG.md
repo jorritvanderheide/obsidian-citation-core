@@ -18,6 +18,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
   in a link's words, a note in the papers folder named for a key with a slash,
   a bibliography with old Mac line endings, and, for the plugins,
   `bibliographiesIn` finds a bibliography given as `-M bibliography=…`.
+- The temporary folders an export or a post uses are called
+  `obsidian-citation-core-…` for both plugins. They were named for Due Credit,
+  and the built-in pandoc's for nothing in particular.
 
 ## 0.3.1
 
