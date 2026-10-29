@@ -31,25 +31,20 @@ How a link becomes a citation, form by form, is in Due Credit's
 
 ## Using it in a plugin
 
-A plugin depends on it twice, once for npm and once for Nix, both pinned to the
-same commit:
-
-- **npm:** a git dependency on the GitHub mirror, at that commit, in
-  `devDependencies`:
-  `npm install git+https://github.com/jorritvanderheide/obsidian-citation-core.git#<commit>`,
-  which npm writes as `"obsidian-citation-core":
-  "github:jorritvanderheide/obsidian-citation-core#<commit>"`.
-  A clean checkout of the plugin builds with it, which the plugin directory's
-  review needs. To work on the core and a plugin at once, run
-  `npm install --no-save ../obsidian-citation-core` in the plugin.
-- **Nix:** a flake input, which `flake.lock` pins to the same commit. The
-  plugin's `checks` run this repository's checks at that commit, and one more
-  check fails when the two pins disagree.
+A plugin depends on it once, as a git dependency on the GitHub mirror, at one
+commit, in `devDependencies`:
+`npm install git+https://github.com/jorritvanderheide/obsidian-citation-core.git#<commit>`,
+which npm writes as `"obsidian-citation-core":
+"github:jorritvanderheide/obsidian-citation-core#<commit>"`. A clean checkout
+of the plugin builds with it, which the plugin directory's review needs, and
+so does the plugin's flake. To work on the core and a plugin at once, run
+`npm install --no-save ../obsidian-citation-core` in the plugin.
 
 The commit a plugin pins is always a tagged version, so its release notes can
 say what changed since the last: [`CHANGELOG.md`](CHANGELOG.md) has each
-version. A plugin that moves to a new one carries what its users notice into
-its own changelog.
+version. This repository's checks have passed on that commit before it is
+tagged, so a plugin doesn't run them again. A plugin that moves to a new one
+carries what its users notice into its own changelog.
 
 ## The built-in pandoc
 
@@ -113,12 +108,13 @@ the two together, and the hashes in `src/core/built-in.ts` with them.
    patch.
 2. **Bump it:** `npm version <x.y.z> --no-git-tag-version`, and the
    `npmDepsHash` in `flake.nix` that `nix flake check` then asks for.
-3. **Push** the commit, then tag it, without a `v`: `jj tag set <x.y.z> -r
-   <commit>`, and `git push codeberg <x.y.z>`, since jj doesn't push tags.
-   The tag reaches the GitHub mirror with it.
-4. **In each plugin,** move both pins to the tagged commit (`nix flake update
-   citation-core`, then `npm install` at it), and write what its users notice
-   under its own `## Unreleased`.
+3. **Push** the commit, and wait for CI on the GitHub mirror to pass on it,
+   since the plugins don't run these checks again. Then tag it, without a
+   `v`: `jj tag set <x.y.z> -r <commit>`, and `git push codeberg <x.y.z>`,
+   since jj doesn't push tags. The tag reaches the GitHub mirror with it.
+4. **In each plugin,** move the pin to the tagged commit (`npm install` at it,
+   as the plugin's `docs/development.md` says), and write what its users
+   notice under its own `## Unreleased`.
 
 ### The conformance check
 
