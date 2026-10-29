@@ -30,6 +30,25 @@ export function cslPath(value: string, styles: string): string {
 	return join(styles, `${value.replace(/\.csl$/i, '')}.csl`);
 }
 
+/**
+ * Where the citation style a setting names is, a bare name looked up in the
+ * styles folder of Zotero's own data folder. A Zotero whose data was moved
+ * keeps them elsewhere, and its styles are named by path (`missingStyle`).
+ */
+export function stylePath(value: string, home: string): string {
+	return cslPath(expandHome(value, home), join(home, 'Zotero', 'styles'));
+}
+
+/** What to say when the bibliography a setting names isn't there. */
+export function missingBibliography(path: string, doing: 'export' | 'publish'): string {
+	return `There's no bibliography at ${path}. Point the Bibliography setting at your Better BibTeX export, or clear it to ${doing} without citations.`;
+}
+
+/** What to say when the citation style a setting names isn't there. */
+export function missingStyle(path: string): string {
+	return `There's no citation style at ${path}. Use the name of a style Zotero has installed, such as apa, or, if Zotero keeps its data somewhere else, the path to the .csl file.`;
+}
+
 /** Whether `path` is inside `folder`, on disk. `..draft.md` is a name, not a way out. */
 export function within(folder: string, path: string): boolean {
 	const rel = relative(folder, path);

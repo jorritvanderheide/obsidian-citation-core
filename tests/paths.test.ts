@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { settingPath, cslPath, expandHome, inFolder, insideVault, withExtension, within } from '../src/core/paths';
+import { settingPath, cslPath, stylePath, missingBibliography, missingStyle, expandHome, inFolder, insideVault, withExtension, within } from '../src/core/paths';
 
 describe('expandHome', () => {
 	it('reads ~ as the home folder, and nothing else', () => {
@@ -25,6 +25,24 @@ describe('cslPath', () => {
 
 	it('takes a path as given', () => {
 		expect(cslPath('/styles/mine.csl', '/z/styles')).toBe('/styles/mine.csl');
+	});
+});
+
+describe('stylePath', () => {
+	it("looks a bare name up in Zotero's styles, and takes a path from home as given", () => {
+		expect(stylePath('apa', '/home/a')).toBe('/home/a/Zotero/styles/apa.csl');
+		expect(stylePath('~/styles/mine.csl', '/home/a')).toBe('/home/a/styles/mine.csl');
+	});
+});
+
+describe("what to say about a file that isn't there", () => {
+	it('says where it looked, and what to do, for exporting or publishing', () => {
+		expect(missingBibliography('/v/library.bib', 'export')).toBe("There's no bibliography at /v/library.bib. Point the Bibliography setting at your Better BibTeX export, or clear it to export without citations.");
+		expect(missingBibliography('/v/library.bib', 'publish')).toContain('clear it to publish without citations');
+	});
+
+	it('says a style can be a path, for a Zotero that keeps its styles somewhere else', () => {
+		expect(missingStyle('/home/a/Zotero/styles/apa.csl')).toBe("There's no citation style at /home/a/Zotero/styles/apa.csl. Use the name of a style Zotero has installed, such as apa, or, if Zotero keeps its data somewhere else, the path to the .csl file.");
 	});
 });
 
