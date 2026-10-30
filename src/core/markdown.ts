@@ -206,7 +206,8 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
  * and their lazy lines included, because every mistake there is a comment
  * kept: a fence indented four spaces past its container is no fence, a
  * closing fence is indented three at most, and a block ends with the quote or
- * the list item it is in, closed or not.
+ * the list item it is in, closed or not. `tests/commonmark.test.ts` holds it
+ * to commonmark.js.
  *
  * A span can cross a line break, within a paragraph: read line by line, its
  * closing backtick would open a span on the next line, and a comment after it

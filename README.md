@@ -23,7 +23,7 @@ it into its own `main.js` and connects it to Obsidian.
 | `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
 | `scripts/release.sh` | Makes a version, as [A new version](#a-new-version) says. The same file is in every plugin. |
 | `scripts/pandoc-floor.sh` | The filter tests against older pandocs, to find the oldest that works. |
-| `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; and `conformance.test.ts`, which runs only on a vault you point it at. |
+| `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; `commonmark.test.ts`, which holds what is code to CommonMark's reference parser on generated notes; and `conformance.test.ts`, which runs only on a vault you point it at. |
 | `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
 | `flake.nix` | The pinned pandoc, as pandoc's static build and its WebAssembly build, and the checks. |
 | `.forgejo/workflows/newest-pandoc.yml` | Once a month, the filter tests against the newest pandoc, on Codeberg. |

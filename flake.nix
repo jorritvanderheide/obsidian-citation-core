@@ -72,7 +72,7 @@
           inherit (package) version;
           src = ./.;
           # Update with: nix run nixpkgs#prefetch-npm-deps -- package-lock.json
-          npmDepsHash = "sha256-L7U40RCumVr1ESEl5menNYheOs6iJg63B/tfk6FUbxw=";
+          npmDepsHash = "sha256-bYdnXnpK9nhp4XqTN99hNAD/HtasYpuGIu/fn7LGWxo=";
           nodejs = pkgs.nodejs_24;
           nativeBuildInputs = [ pandoc ];
           PANDOC_WASM = pandocWasm;
