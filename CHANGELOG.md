@@ -4,6 +4,22 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
+## Unreleased
+
+- A `%%comment%%` after a line that only looks like a code fence stays out
+  of the export and the post. A ```` ``` ```` indented four spaces at the top
+  of a note opened a code block that ran to the end of the note, so every
+  comment after it was kept as code. Code blocks and code spans are now found
+  as CommonMark finds them, in quotes and list items too, and a test holds
+  the core to CommonMark's own parser. That closes a few more ways a comment
+  was kept: after a closing fence indented four spaces, after a quoted line
+  that looked like the closing fence of a block outside the quote, and next
+  to a code span that began in a heading, an indented code block or an
+  earlier line of a quote.
+- A `%%comment%%` in backticks inside an indented code block goes too, like
+  any other comment in that block. The core reads an indented code block as
+  text.
+
 ## 0.5.0
 
 - An installed pandoc is asked its version before it runs. One older than 3.0,

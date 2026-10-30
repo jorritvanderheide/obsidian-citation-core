@@ -74,6 +74,29 @@ describe('segments', () => {
 		expect(stripComments('- a\n\n  ```js\n  x\n\nOutside %%private%%.\n')).toBe('- a\n\n  ```js\n  x\n\nOutside .\n');
 	});
 
+	it('takes a fence indented four spaces past its container for no fence', () => {
+		expect(stripComments('Text\n\n    ```\n%%secret one%%\n\nMore %%secret two%% here')).toBe('Text\n\n    ```\n\n\nMore  here');
+		expect(stripComments('Text\n    ```\n%%secret%%\n```\nAfter %%kept%%\n```\n')).toBe('Text\n    ```\n\n```\nAfter %%kept%%\n```\n');
+		expect(stripComments('- a\n\n      ```\n  %%secret%%\n')).toBe('- a\n\n      ```\n  \n');
+		expect(stripComments('- a\n\n     ```\n     %%kept%%\n')).toBe('- a\n\n     ```\n     %%kept%%\n');
+	});
+
+	it('closes a fence only on a fence indented three spaces at most, in the same quotes', () => {
+		expect(stripComments('```\n    ```\n%%kept%%\n```\n%%secret%%\n')).toBe('```\n    ```\n%%kept%%\n```\n\n');
+		expect(stripComments('~~~\n> ~~~\n%%kept%%\n~~~\n%%secret%%\n')).toBe('~~~\n> ~~~\n%%kept%%\n~~~\n\n');
+	});
+
+	it('reads a span across the lines of a paragraph in a quote, and not into an indented code block', () => {
+		expect(stripComments('> a `x\n> b` %%secret%% `c`\n')).toBe('> a `x\n> b`  `c`\n');
+		expect(stripComments('    a ` b\nc %%secret%% ` d\n')).toBe('    a ` b\nc  ` d\n');
+		expect(stripComments('# a `x %%secret%%\nb`\n')).toBe('# a `x \nb`\n');
+	});
+
+	it('reads a blank line in a quote, and a list item in a quote, as CommonMark does', () => {
+		expect(stripComments('> ``\n>\n%%secret%% ``\n')).toBe('> ``\n>\n ``\n');
+		expect(stripComments('Text\n> 10) ```\n%%secret%% ```x```\n')).toBe('Text\n> 10) ```\n ```x```\n');
+	});
+
 	it('reads a span across a line break, within a paragraph', () => {
 		expect(segments('A `multi\nline` then %% and `x`\n')).toEqual([
 			{ code: false, text: 'A ' },

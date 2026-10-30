@@ -63,6 +63,14 @@ Every rewrite in `core/markdown.ts` goes through `segments`, and leaves fenced
 code blocks and backtick spans alone. A comment marker, tag or link inside code
 is text, and stays exactly as written.
 
+`segments` finds the fenced blocks as CommonMark does, with the quotes and
+list items around them and their lazy lines. A fence indented four spaces past
+its quote or list item is no fence, a closing fence is indented three spaces at
+most, and a block ends with the quote or list item it's in, closed or not. A
+span is read across the lines of one paragraph, and never into the next block.
+An indented code block counts as text, with no spans read in it, which can
+only strip a comment too many.
+
 `segments` is there to keep comments from leaking. Where it disagrees with
 CommonMark about what is code, only one kind of mistake matters. That's text it
 treats as code when CommonMark doesn't, because a comment in it would be kept.

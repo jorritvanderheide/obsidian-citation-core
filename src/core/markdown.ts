@@ -14,21 +14,186 @@ export interface Segment {
 	text: string;
 }
 
-// A fence, after the `>` of the quotes it is in and its indentation in a list
-// item. A backtick fence's info string holds no backtick, so a line such as
-// ```` ```npm i``` installs it ```` opens with inline code, as in CommonMark and
-// pandoc. Indented four spaces or more at the top level, a fence is inside an
-// indented code block, and code either way.
-const FENCE = /^((?:[ \t]*>)*)([ \t]*)(`{3,}(?=[^`]*$)|~{3,})/;
+/**
+ * What a line of the note is, as CommonMark's blocks have it: the opening line
+ * of a fenced block, a line inside one, a line of a paragraph or a heading,
+ * whose spans are read, or any other line. Lines of one paragraph share a
+ * `unit`, and every other line has one of its own.
+ */
+type LineKind = 'fence' | 'in fence' | 'inline' | 'other';
 
-/** How many quotes a line is in. */
-const quotes = (line: string) => (/^(?:[ \t]*>)*/.exec(line)?.[0] ?? '').split('>').length - 1;
-/** How far a line is indented, a tab as four spaces. */
-const indent = (line: string) => (/^[ \t]*/.exec(line)?.[0] ?? '').replace(/\t/g, '    ').length;
-// A list item's marker, and the spaces up to its content.
-const ITEM = /^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)\S/;
-// A line that starts a block of its own, which a code span cannot cross into.
-const BLOCK_START = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-*+][ \t]|\d{1,9}[.)][ \t]|\|)/;
+// CommonMark's block starts, on a line from where its containers end.
+const FENCE = /^(`{3,})(?=[^`]*$)|^(~{3,})/;
+const CLOSING_FENCE = /^(`{3,}|~{3,})[ \t]*$/;
+const ATX_HEADING = /^#{1,6}(?:[ \t]|$)/;
+const SETEXT_UNDERLINE = /^(?:=+|-+)[ \t]*$/;
+const THEMATIC_BREAK = /^(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/;
+const LIST_MARKER = /^(?:[*+-]|(\d{1,9})[.)])(?=[ \t]|$)/;
+// The HTML blocks: each kind's start, and its end, on a line of its own or,
+// for the last two, at a blank line. The last kind cannot interrupt a
+// paragraph.
+const HTML_TAG = String.raw`(?:<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^"'=<>\x60\s]+|'[^']*'|"[^"]*"))?)*\s*\/?>|<\/[A-Za-z][A-Za-z0-9-]*\s*>)`;
+const HTML_BLOCKS: [RegExp, RegExp | null][] = [
+	[/^<(?:script|pre|textarea|style)(?:\s|>|$)/i, /<\/(?:script|pre|textarea|style)>/i],
+	[/^<!--/, /-->/],
+	[/^<\?/, /\?>/],
+	[/^<![A-Za-z]/, />/],
+	[/^<!\[CDATA\[/, /\]\]>/],
+	[/^<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|section|search|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:\s|\/?>|$)/i, null],
+	[new RegExp(`^${HTML_TAG}\\s*$`), null],
+];
+
+/** A line with each tab as the spaces up to the next multiple of four, as CommonMark counts columns. */
+function columns(line: string): string {
+	let out = '';
+	for (const char of line) out += char === '\t' ? ' '.repeat(4 - (out.length % 4)) : char;
+	return out;
+}
+
+/**
+ * Every line of the note read into CommonMark's blocks, as commonmark.js reads
+ * them: quotes and list items, with lazy lines, around fenced and indented
+ * code, HTML, headings and paragraphs. Only as far as telling code from text
+ * needs, so a list is only its items, and a table row, which a span cannot
+ * cross, is read on its own, as in GitHub's Markdown.
+ */
+function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
+	type Container = { quote: true } | { quote: false; width: number; content: boolean };
+	type Leaf = { kind: 'paragraph'; unit: number } | { kind: 'fence'; char: string; length: number } | { kind: 'indented' } | { kind: 'html'; end: RegExp | null };
+	const open: Container[] = [];
+	let leaf: Leaf | null = null;
+	let units = 0;
+
+	return lines.map((raw) => {
+		const line = columns(raw.replace(/\r?\n$/, ''));
+		let offset = 0;
+		const nonspace = () => {
+			let at = offset;
+			while (line[at] === ' ') at++;
+			return at;
+		};
+		// Blank from where the containers matched so far end: `>` alone is a blank
+		// line in a quote.
+		const blank = () => nonspace() >= line.length;
+
+		// The containers the line continues.
+		let matched = 0;
+		for (const container of open) {
+			const at = nonspace();
+			if (container.quote) {
+				if (at - offset > 3 || line[at] !== '>') break;
+				offset = line[at + 1] === ' ' ? at + 2 : at + 1;
+			} else if (blank()) {
+				if (!container.content) break;
+				offset = at;
+			} else {
+				if (at - offset < container.width) break;
+				offset += container.width;
+			}
+			matched++;
+		}
+		const all = matched === open.length;
+
+		// The leaf it continues, when it is in every container that leaf is in.
+		if (all && leaf?.kind === 'fence') {
+			const at = nonspace();
+			const closing = CLOSING_FENCE.exec(line.slice(at));
+			if (at - offset <= 3 && closing && closing[1]![0] === leaf.char && closing[1]!.length >= leaf.length) leaf = null;
+			return { kind: 'in fence', unit: units++ };
+		}
+		if (all && leaf?.kind === 'indented' && (blank() || nonspace() - offset >= 4)) return { kind: 'other', unit: units++ };
+		if (all && leaf?.kind === 'html' && !(blank() && leaf.end === null)) {
+			if (leaf.end?.test(line)) leaf = null;
+			return { kind: 'other', unit: units++ };
+		}
+		// Any other leaf has ended, and so has a paragraph at a blank line. One
+		// that goes on, in every container or lazily, a block start can still
+		// interrupt.
+		if (leaf !== null && (leaf.kind !== 'paragraph' || blank())) leaf = null;
+		const inParagraph = () => leaf?.kind === 'paragraph';
+		// Whether a block start would interrupt the paragraph in the innermost
+		// container, which it may only do as CommonMark allows.
+		const interrupting = () => all && inParagraph();
+		const start = () => {
+			open.length = matched;
+			leaf = null;
+			const inner = open[open.length - 1];
+			if (inner && !inner.quote) inner.content = true;
+		};
+		for (;;) {
+			const at = nonspace();
+			const rest = line.slice(at);
+			if (at - offset >= 4) {
+				if (inParagraph() || blank()) break;
+				start();
+				leaf = { kind: 'indented' };
+				return { kind: 'other', unit: units++ };
+			}
+			if (rest[0] === '>') {
+				start();
+				open.push({ quote: true });
+				matched = open.length;
+				offset = line[at + 1] === ' ' ? at + 2 : at + 1;
+				continue;
+			}
+			if (ATX_HEADING.test(rest)) {
+				start();
+				return { kind: 'inline', unit: units++ };
+			}
+			const fence = FENCE.exec(rest);
+			if (fence) {
+				start();
+				const marker = fence[1] ?? fence[2]!;
+				leaf = { kind: 'fence', char: marker[0]!, length: marker.length };
+				return { kind: 'fence', unit: units++ };
+			}
+			const html = HTML_BLOCKS.findIndex(([opening], kind) => opening.test(rest) && (kind < 6 || !inParagraph()));
+			if (html !== -1) {
+				start();
+				const end = HTML_BLOCKS[html]![1];
+				if (!end?.test(rest)) leaf = { kind: 'html', end };
+				return { kind: 'other', unit: units++ };
+			}
+			if (interrupting() && SETEXT_UNDERLINE.test(rest)) {
+				leaf = null;
+				return { kind: 'other', unit: units++ };
+			}
+			if (THEMATIC_BREAK.test(rest)) {
+				start();
+				return { kind: 'other', unit: units++ };
+			}
+			// A list item, which can interrupt a paragraph only when it has
+			// something in it, and when numbered, only from 1.
+			const item = LIST_MARKER.exec(rest);
+			const after = item ? line.slice(at + item[0].length) : '';
+			const empty = after.trim() === '';
+			if (item && !(interrupting() && (empty || (item[1] !== undefined && Number(item[1]) !== 1)))) {
+				const spaces = /^ */.exec(after)![0].length;
+				const padding = item[0].length + (spaces >= 5 || spaces < 1 || empty ? 1 : spaces);
+				start();
+				open.push({ quote: false, width: at - offset + padding, content: false });
+				matched = open.length;
+				offset = Math.min(at + padding, line.length);
+				continue;
+			}
+			break;
+		}
+
+		if (blank()) {
+			open.length = matched;
+			leaf = null;
+			return { kind: 'other', unit: units++ };
+		}
+		if (!inParagraph()) start();
+		const paragraph = leaf ?? { kind: 'paragraph', unit: units++ };
+		leaf = paragraph;
+		if (!/^\|/.test(line.slice(nonspace()))) return { kind: 'inline', unit: paragraph.unit };
+		// A table row is read on its own, and so is what follows it.
+		const unit = units++;
+		paragraph.unit = units++;
+		return { kind: 'inline', unit };
+	});
+}
 
 /**
  * The note cut into code and everything else, which concatenate back to it.
@@ -37,21 +202,18 @@ const BLOCK_START = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-*+][ \t]|\d{1,9}[.)][ \t]|\
  * fences only, so that what is not code is always whole lines. Each fenced
  * block is a segment of its own, opening line first.
  *
+ * What is a fenced block is read as CommonMark reads it, quotes, list items
+ * and their lazy lines included, because every mistake there is a comment
+ * kept: a fence indented four spaces past its container is no fence, a
+ * closing fence is indented three at most, and a block ends with the quote or
+ * the list item it is in, closed or not.
+ *
  * A span can cross a line break, within a paragraph: read line by line, its
  * closing backtick would open a span on the next line, and a comment after it
  * would count as code and be kept. So spans are read over the lines of a
- * paragraph together, broken at a blank line and at a line that starts a block
- * of its own: a heading, a quote, a list item or a table row. An indented code
- * block is not code here, since telling it from an indented paragraph in a
- * list needs the list; read as text, it only loses what text loses.
- *
- * A fence in a quote or a list item ends with it, closed or not, as in
- * CommonMark: at a line in fewer quotes, or at one indented less than the
- * content of the list item the fence is indented into. Read on as code, the
- * rest of the note would keep its comments. Which item that is takes the list
- * items read so far, with their lazy lines: a fence merely indented a little is
- * not in one, and a guess from its indentation alone ends it too early, after
- * which its closing fence opens one, and the text after it is taken for code.
+ * paragraph together. A heading's spans are read on its line. An indented
+ * code block is text here, with no spans in it: read as text, it only loses
+ * what text loses, and the lines of HTML blocks are text too.
  */
 export function segments(text: string, inline = true): Segment[] {
 	const out: Segment[] = [];
@@ -62,58 +224,26 @@ export function segments(text: string, inline = true): Segment[] {
 		else out.push({ code, text: part });
 	};
 
-	// The fence being read: its marker, the quotes it is in, and the content
-	// column of the list item it is in, or null at the top level.
-	let fence: { marker: string; quotes: number; item: number | null } | null = null;
-	// The content columns of the list items open around the line, innermost
-	// last, and whether a line may still continue the last one's paragraph.
-	const items: number[] = [];
-	let lazy = false;
 	// The lines of the paragraph being read, for spans that cross a line break.
 	let paragraph = '';
+	let unit = -1;
 	const flush = () => {
 		spans(paragraph, push);
 		paragraph = '';
 	};
-	for (const line of text.split(/(?<=\n)/)) {
-		const blank = line.trim() === '';
-		if (fence !== null && !blank) {
-			// The quote or the list item the block was in has ended.
-			if (quotes(line) < fence.quotes || (fence.item !== null && indent(line) < fence.item)) fence = null;
-		}
-		const marker = FENCE.exec(line)?.[3];
-		if (fence !== null) {
-			push(true, line);
-			const closing = line.replace(/^(?:[ \t]*>)*/, '').trim();
-			if (marker && marker[0] === fence.marker[0] && marker.length >= fence.marker.length && closing === marker) fence = null;
-			continue;
-		}
-
-		const item = ITEM.exec(line);
-		if (blank) lazy = false;
-		else if (item) {
-			while (items.length > 0 && items[items.length - 1]! > indent(line)) items.pop();
-			items.push((item[1]! + item[2]! + item[3]!).replace(/\t/g, '    ').length);
-			lazy = !marker;
-		} else if (!lazy || marker) {
-			while (items.length > 0 && items[items.length - 1]! > indent(line)) items.pop();
-			lazy = !marker && items.length > 0;
-		}
-
-		if (marker) {
-			flush();
-			fence = { marker, quotes: quotes(line), item: items[items.length - 1] ?? null };
+	const lines = text.split(/(?<=\n)/);
+	lineKinds(lines).forEach(({ kind, unit: next }, i) => {
+		const line = lines[i]!;
+		if (kind !== 'inline' || next !== unit) flush();
+		unit = next;
+		if (kind === 'fence') {
 			// A segment of its own, even right after another block, so that a
 			// block can be told by its opening line.
 			out.push({ code: true, text: line });
-		} else if (inline) {
-			if (blank || BLOCK_START.test(line)) flush();
-			paragraph += line;
-			if (blank) flush();
-		} else {
-			push(false, line);
-		}
-	}
+		} else if (kind === 'in fence') push(true, line);
+		else if (kind === 'inline' && inline) paragraph += line;
+		else push(false, line);
+	});
 	flush();
 	return out;
 }

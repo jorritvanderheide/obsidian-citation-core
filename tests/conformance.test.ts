@@ -8,8 +8,8 @@
 //
 // Only one side of that is a failure: text `segments` takes for code, where a
 // comment would be kept. Code it takes for text, such as an indented code
-// block, is reported and allowed: telling one from an indented paragraph in a
-// list needs a list parser, and a wrong guess the other way would leak.
+// block, is reported and allowed: `segments` reads one as text on purpose,
+// which can only strip a comment too many.
 // Differences in raw HTML blocks are real, but notes rarely have them.
 //
 // Not part of the suite: it needs notes. Run it on a vault, or any folder:
