@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, unshown, wikilinked, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
+	// Each of these took seconds to a minute when every level of nesting read
+	// the rest of the line again. A note can be anything, so none may hang.
+	it('reads a long line or a deep list in time linear in the note', () => {
+		const notes = [
+			'* '.repeat(50000) + 'x',
+			'* '.repeat(50000) + '-',
+			'- '.repeat(5000) + '\n' + (' '.repeat(10000) + 'x\n').repeat(200),
+			'> '.repeat(50000) + 'x',
+		];
+		for (const note of notes) {
+			const started = performance.now();
+			segments(note);
+			expect(performance.now() - started).toBeLessThan(1000);
+		}
+	});
+
 	it('concatenates back to the note', () => {
 		const text = 'a `b` c\n```js\n%% x\n```\nd ``e ` f`` g\n';
 		expect(segments(text).map((segment) => segment.text).join('')).toBe(text);

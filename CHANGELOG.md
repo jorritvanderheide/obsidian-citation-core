@@ -16,6 +16,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
   that looked like the closing fence of a block outside the quote, and next
   to a code span that began in a heading, an indented code block or an
   earlier line of a quote.
+- A note with a very long line of list markers or a very deep list no longer
+  holds up an export or a post for seconds or minutes. Each level of nesting
+  read the rest of the line again.
 - Add page to citation and Toggle author in citation no longer take a number
   after a no-break space in a label for a page. The export never did, so the
   two now agree.

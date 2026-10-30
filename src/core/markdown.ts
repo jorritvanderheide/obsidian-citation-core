@@ -27,7 +27,6 @@ const FENCE = /^(`{3,})(?=[^`]*$)|^(~{3,})/;
 const CLOSING_FENCE = /^(`{3,}|~{3,})[ \t]*$/;
 const ATX_HEADING = /^#{1,6}(?:[ \t]|$)/;
 const SETEXT_UNDERLINE = /^(?:=+|-+)[ \t]*$/;
-const THEMATIC_BREAK = /^(?:(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,})$/;
 const LIST_MARKER = /^(?:[*+-]|(\d{1,9})[.)])(?=[ \t]|$)/;
 // The HTML blocks: each kind's start, and its end, on a line of its own or,
 // for the last two, at a blank line. The last kind cannot interrupt a
@@ -47,6 +46,33 @@ const HTML_BLOCKS: [RegExp, RegExp | null][] = [
 const BLOCK_START = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-*+][ \t]|\d{1,9}[.)][ \t]|\|)/;
 
 /** A line with each tab as the spaces up to the next multiple of four, as CommonMark counts columns. */
+/**
+ * For each place in a line, whether the line from there on is a thematic
+ * break: three or more of one of `*`, `_` or `-`, with only spaces or tabs
+ * between and after. Worked out once per line, from its end, because a list nested once
+ * per `* ` asks at every level, and testing the rest of the line each time made
+ * a long line quadratic.
+ */
+function thematicBreaks(line: string): boolean[] {
+	const out = new Array<boolean>(line.length + 1).fill(false);
+	let mark: string | null = null;
+	let count = 0;
+	let mixed = false;
+	for (let at = line.length - 1; at >= 0; at--) {
+		const char = line[at]!;
+		if (char === ' ' || char === '\t') continue;
+		if (char === '*' || char === '_' || char === '-') {
+			if (mark === null) mark = char;
+			if (char !== mark) mixed = true;
+			count++;
+			out[at] = !mixed && count >= 3;
+		} else {
+			mixed = true;
+		}
+	}
+	return out;
+}
+
 function columns(line: string): string {
 	let out = '';
 	for (const char of line) out += char === '\t' ? ' '.repeat(4 - (out.length % 4)) : char;
@@ -70,11 +96,21 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 	return lines.map((raw) => {
 		const line = columns(raw.replace(/\r?\n$/, ''));
 		let offset = 0;
+		// Where the spaces from `offset` end. Remembered, because `offset` only
+		// moves on along a line, and scanning the same run of spaces again for
+		// every container a deep list has open made a line quadratic.
+		let scannedFrom = -1;
+		let scannedTo = -1;
 		const nonspace = () => {
+			if (offset >= scannedFrom && offset <= scannedTo) return scannedTo;
 			let at = offset;
 			while (line[at] === ' ') at++;
+			scannedFrom = offset;
+			scannedTo = at;
 			return at;
 		};
+		let breaks: boolean[] | null = null;
+		const thematic = (at: number) => (breaks ??= thematicBreaks(line))[at] === true;
 		// Blank from where the containers matched so far end: `>` alone is a blank
 		// line in a quote.
 		const blank = () => nonspace() >= line.length;
@@ -171,7 +207,7 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 				leaf = null;
 				return { kind: 'other', unit: units++ };
 			}
-			if (THEMATIC_BREAK.test(rest)) {
+			if (thematic(at)) {
 				start();
 				return { kind: 'other', unit: units++ };
 			}
