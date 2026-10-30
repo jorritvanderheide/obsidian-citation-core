@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.5.1
 
 - A `%%comment%%` after a line that only looks like a code fence stays out
   of the export and the post. A ```` ``` ```` indented four spaces at the top
