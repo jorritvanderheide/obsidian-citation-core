@@ -7,8 +7,10 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
 import { bibKeys, keyOf, renameInAlias } from '../src/core/citations';
 import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
-import { footnotes, wikilinked } from '../src/core/markdown';
+import { footnotes, wikilinked, wikilinks } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
+import { isLocator } from '../src/core/writing';
+import { random } from './random';
 
 function installed(program = 'pandoc'): boolean {
 	try {
@@ -232,6 +234,184 @@ describe.skipIf(!installed())('one rule, written twice', () => {
 			);
 		},
 	);
+});
+
+// The same rules on inputs made up from a seed, many at once: every link is a
+// paragraph of one note, so pandoc runs once, on the built-in pandoc too.
+type Found = { key: string; prefix: string; suffix: string; mode: string } | { words: string };
+
+/** The text of some inlines, as `pandoc.utils.stringify` gives it. */
+function plain(value: unknown): string {
+	if (Array.isArray(value)) return value.map(plain).join('');
+	if (!value || typeof value !== 'object') return '';
+	const node = value as Inline;
+	if (node.t === 'Str') return node.c as string;
+	if (node.t === 'Space' || node.t === 'SoftBreak') return ' ';
+	if (node.t === 'Cite' || node.t === 'Link') return plain((node.c as unknown[])[1]);
+	return plain(node.c);
+}
+
+/** What the filter makes of each paragraph: the citation it is, or its words. */
+function filteredEach(paragraphs: string[], bibliographies: string[]): Found[] {
+	const args = ['--from=markdown+wikilinks_title_after_pipe', `--lua-filter=${filter}`, ...bibliographies.map((path) => `--bibliography=${path}`), '--to=json'];
+	const json = JSON.parse(execFileSync('pandoc', args, { input: paragraphs.join('\n\n'), maxBuffer: 1 << 26 }).toString()) as { blocks: { c: Inline[] }[] };
+	expect(json.blocks).toHaveLength(paragraphs.length);
+	const found = json.blocks.map(({ c: inlines }): Found => {
+		const cite = inlines.length === 1 && inlines[0]?.t === 'Cite' ? (inlines[0].c as [Citation[]])[0][0] : undefined;
+		if (!cite || cite.citationMode.t === 'AuthorInText') return { words: plain(inlines) };
+		const words = (list: Inline[]) => list.map((inline) => (inline.t === 'Str' ? (inline.c as string) : ' ')).join('');
+		return { key: cite.citationId, prefix: words(cite.citationPrefix), suffix: words(cite.citationSuffix), mode: cite.citationMode.t };
+	});
+	// Made-up inputs that are all citations, or none, test half the rule.
+	expect(found.filter((one) => 'key' in one).length).toBeGreaterThan(paragraphs.length / 10);
+	expect(found.filter((one) => 'words' in one).length).toBeGreaterThan(paragraphs.length / 10);
+	return found;
+}
+
+/** Lua's `%s`, which the filter trims by. */
+const luaTrim = (text: string) => text.replace(/^[ \t\n\v\f\r]+|[ \t\n\v\f\r]+$/g, '');
+
+/**
+ * What the core's halves of the rules say the filter makes of a link: `wikilinks`
+ * and `keyOf` for whether it cites and what, `renameInAlias` for where the alias
+ * has the key, and `isLocator` for a page after the alias's first comma or
+ * after `#`, as Add page to citation and Toggle author in citation read them.
+ */
+function twin(link: string, alias: string | null, keys: Set<string>): Found {
+	const [found] = wikilinks(link);
+	if (!found) return { words: '' };
+	const key = keyOf(found.target, keys);
+	if (!keys.has(key)) return { words: found.words };
+	let prefix = '';
+	let suffix = '';
+	let mode = 'NormalCitation';
+	if (alias !== null && alias !== found.target) {
+		const renamed = renameInAlias(alias, key, '\u0001');
+		if (renamed !== alias) {
+			const at = renamed.indexOf('\u0001');
+			let start = alias[at - 1] === '@' ? at - 1 : at;
+			if (alias[start - 1] === '-') {
+				mode = 'SuppressAuthor';
+				start--;
+			}
+			prefix = luaTrim(alias.slice(0, start));
+			suffix = alias.slice(at + key.length).replace(/[ \t\n\v\f\r]+$/, '');
+		} else {
+			const comma = alias.indexOf(',');
+			if (comma !== -1 && isLocator(alias.slice(comma + 1))) suffix = `, ${luaTrim(alias.slice(comma + 1))}`;
+		}
+	}
+	// Without the backslash a table row leaves before the pipe, as `linkpathOf` and the filter drop it.
+	const heading = /#(.*)$/.exec(found.target.replace(/\\$/, ''))?.[1];
+	if (suffix === '' && heading !== undefined && isLocator(heading)) suffix = `, ${luaTrim(heading)}`;
+	// Pandoc splits a prefix and a suffix into words at a space.
+	const spaced = (text: string) => text.replace(/[ \t\n\r]+/g, ' ');
+	return { key, prefix: spaced(prefix), suffix: spaced(suffix), mode };
+}
+
+/** Links made up of the pieces the rules read: folders, `@`, extensions, headings, keys and pages in the alias. */
+function generatedLinks(seed: number, count: number): { link: string; target: string; alias: string | null }[] {
+	const { pick, chance, int } = random(seed);
+	return Array.from({ length: count }, () => {
+		const target =
+			(chance(0.05) ? ' ' : '') +
+			pick(['', '', 'Literature/', 'jones/', 'Notes/x y/']) +
+			pick(['', '', '@', '@@']) +
+			pick(['a', 'a', 'b', 'smith:2017', '2019', 'ab', 'A', 'c', 'a b', 'a.', 'é', 'a\u00A0b']) +
+			pick(['', '', '.md', '.MD', '.pdf', '.md.md']) +
+			pick(['', '', '#p. 12', '#Claim', '#^block', '#ch. 3', '#Sec#p. 4', '#§ 2', '#12', '#pp. 3-4', '#^12', '#Ch. 2', '#\u00A04']) +
+			(chance(0.05) ? ' ' : '');
+		if (chance(0.3)) return { link: `[[${target}]]`, target, alias: null };
+		const token = () =>
+			pick([
+				() => pick(['a', '@a', '-a', '-@a', 'b', 'smith:2017', 'jones/2019', 'aa', 're-a', 'me@a', '(a)', 'a.']),
+				() => pick(['see', 'Marsh', 'about', 'Smith and Jones', 'emphasis added', 'Ann', 'Author']),
+				() => pick(['p. 4', 'pp. 4, 6', 'ch. 2', '12', '§ 3', 'Ch. 3', 'pagesé 3', 'note 5', '2024', 'col. 2', 'p.4', 'fig 3', '\u00A04']),
+			]);
+		let alias = token();
+		for (let i = int(0, 3); i > 0; i--) alias += pick([' ', ', ', '; ', '\u00A0', ',']) + token();
+		alias = luaTrim(alias.replace(/ +/g, ' '));
+		return { link: `[[${target}${pick(['|', '|', '|', '\\|'])}${alias}]]`, target, alias };
+	});
+}
+
+/** `.bib` files made up of entries written every way the rules read, or don't: each key starts with its file's name, so no two files share one. */
+function generatedBibliographies(seed: number, count: number): { text: string; written: string[] }[] {
+	const { pick, int } = random(seed);
+	return Array.from({ length: count }, (_, file) => {
+		const written: string[] = [];
+		let text = pick(['', '', '\uFEFF', '\n']);
+		for (let entry = int(1, 5); entry > 0; entry--) {
+			const key = `f${file}e${entry}` + Array.from({ length: int(0, 3) }, () => pick(['x', 'Y', '7', ':', '/', '-', '_', '.', '+', '\u00A0', 'é'])).join('') + 'z';
+			written.push(key);
+			const space = () => pick(['', '', ' ', '\n', '\r\n', '\t', '  ']);
+			text +=
+				pick(['', '', '  ', '\t', '\uFEFF', 'x ']) +
+				'@' +
+				pick(['article', 'Book', 'my_type', 'misc2', 'comment', 'string']) +
+				space() +
+				pick(['{', '{', '(']) +
+				space() +
+				key +
+				pick(['', '', ' ', '\n', '\t']) +
+				pick([',', ',', ',', ' =', '}']) +
+				pick(['\n  title = {T},\n', ' title={T}, year={2001}', '']) +
+				'}' +
+				pick(['\n', '\n', '\r\n', '\n\n', ' ']);
+		}
+		return { text, written };
+	});
+}
+
+describe.skipIf(!installed())('one rule, written twice, on generated links', () => {
+	// Where the two halves read a link apart and it's known, left out here until
+	// it's settled, so the test finds only what is new. Take a line out to see
+	// its cases.
+	const known = (target: string, alias: string | null) =>
+		// `wikilinks` trims the target, so the check cites `[[a |a]]`, and the
+		// filter doesn't.
+		target !== luaTrim(target) ||
+		// The filter's page after `#` is after the last one, `[[a#Sec#p. 4]]`,
+		// and Toggle author in citation's after the first.
+		/#.*#/.test(target) ||
+		// `as_locator` reads a word in ASCII letters, so `pagesé 3` starts with
+		// `pages` and is a page to the filter, and to `isLocator` it's no word
+		// it knows.
+		/[A-Za-z]é/.test(alias ?? '') ||
+		// `wikilinks` trims the words of a link that isn't a citation with
+		// JavaScript's trim, which takes a no-break space too, and the filter
+		// keeps it.
+		/^\u00A0|\u00A0$/.test(alias ?? '');
+
+	it('cites what keyOf names, and reads the alias around it as renameInAlias and isLocator do', () => {
+		const keys = bibKeys(readFileSync(bib, 'utf8'));
+		const links = generatedLinks(1, 1500);
+		const found = filteredEach(
+			links.map(({ link }) => link),
+			[bib],
+		);
+		const differ = links
+			.map(({ link, target, alias }, i) => ({ link, filter: found[i], core: known(target, alias) ? found[i] : twin(link, alias, keys) }))
+			.filter(({ filter, core }) => JSON.stringify(filter) !== JSON.stringify(core));
+		expect(differ.slice(0, 5)).toEqual([]);
+	});
+
+	it('reads the same keys as bibKeys from every .bib', () => {
+		const files = generatedBibliographies(2, 40);
+		const paths = files.map(({ text }, i) => {
+			const path = join(dir, `generated-${i}.bib`);
+			writeFileSync(path, text);
+			return path;
+		});
+		const keys = new Set(files.flatMap(({ text }) => [...bibKeys(text)]));
+		const written = files.flatMap(({ written }) => written);
+		const found = filteredEach(
+			written.map((key) => `[[${key}]]`),
+			paths,
+		);
+		const differ = written.map((key, i) => ({ key, filter: 'key' in found[i]! ? found[i].key : null, core: keys.has(keyOf(key, keys)) ? keyOf(key, keys) : null })).filter(({ filter, core }) => filter !== core);
+		expect(differ.slice(0, 5)).toEqual([]);
+	});
 });
 
 describe.skipIf(!installed())('a bibliography with a byte order mark', () => {
