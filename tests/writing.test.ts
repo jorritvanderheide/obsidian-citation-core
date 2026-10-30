@@ -17,6 +17,11 @@ describe('isLocator', () => {
 		expect(isLocator('Ch. 3')).toBe(true);
 		expect(isLocator('emphasis added')).toBe(false);
 	});
+
+	it('trims only the spaces the filter trims', () => {
+		expect(isLocator(' 4\n')).toBe(true);
+		expect(isLocator('\u00A04')).toBe(false);
+	});
 });
 
 describe('typedLocator', () => {

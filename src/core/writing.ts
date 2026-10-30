@@ -27,9 +27,13 @@ export const LOCATOR_TERMS = new Set(
 	book folio`.split(/\s+/),
 );
 
-/** Whether the text reads as a locator: a number, `§`, or a locator word first, as the filter's `as_locator` reads it. */
+/**
+ * Whether the text reads as a locator: a number, `§`, or a locator word first,
+ * as the filter's `as_locator` reads it. Trimmed of Lua's `%s` only, so a page
+ * after a no-break space is no page to either.
+ */
 export function isLocator(text: string): boolean {
-	const ref = text.trim();
+	const ref = text.replace(/^[ \t\n\v\f\r]+|[ \t\n\v\f\r]+$/g, '');
 	if (/^\d/.test(ref) || ref.startsWith('§')) return true;
 	const term = /^\p{L}+\.?/u.exec(ref)?.[0];
 	return term !== undefined && LOCATOR_TERMS.has(term.toLowerCase());

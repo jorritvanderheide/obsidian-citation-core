@@ -19,6 +19,9 @@ Each version is a tag, and a plugin pins only a tagged commit.
 - A `%%comment%%` in backticks inside an indented code block goes too, like
   any other comment in that block. The core reads an indented code block as
   text.
+- Add page to citation and Toggle author in citation no longer take a number
+  after a no-break space in a label for a page. The export never did, so the
+  two now agree.
 
 ## 0.5.0
 
