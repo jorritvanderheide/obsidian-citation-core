@@ -21,6 +21,7 @@ it into its own `main.js` and connects it to Obsidian.
 | `pandoc/` | The Lua filters. |
 | `fonts/` | Open Sans, for PDF. |
 | `scripts/pandoc-wasm.mjs` | The built-in pandoc as a `pandoc` command, for running the tests against it. |
+| `scripts/release.sh` | Makes a version, as [A new version](#a-new-version) says. The same file is in every plugin. |
 | `scripts/pandoc-floor.sh` | The filter tests against older pandocs, to find the oldest that works. |
 | `tests/` | A test for each file in `src/core/`; `pandoc.test.ts` and `wasm.test.ts`, which run a real pandoc; and `conformance.test.ts`, which runs only on a vault you point it at. |
 | `vitest.config.ts` | The `.lua` and `.ttf` imports for the tests, as a plugin's esbuild has them, and a longer timeout for the built-in pandoc. |
@@ -139,6 +140,14 @@ again then, on the floor and the release before it.
 4. **In each plugin,** move the pin to the tagged commit (`npm install` at it,
    as the plugin's `docs/development.md` says), and write what its users
    notice under its own `## Unreleased`.
+
+`scripts/release.sh <x.y.z> "<what the version is>"` does the first three,
+from an empty working-copy change on top of the commits to release: it waits
+for CI on the mirror before it tags. It stops before anything is pushed when a
+check fails, or when the subject is 72 characters or more, the message or the
+notes have a bare `@`, or `main` on Codeberg has moved. `--dry-run` goes as far
+as the push, then puts everything back. The script is the same in every
+plugin, which use it for their whole release.
 
 ### The conformance check
 
