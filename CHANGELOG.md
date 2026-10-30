@@ -16,9 +16,6 @@ Each version is a tag, and a plugin pins only a tagged commit.
   that looked like the closing fence of a block outside the quote, and next
   to a code span that began in a heading, an indented code block or an
   earlier line of a quote.
-- A `%%comment%%` in backticks inside an indented code block goes too, like
-  any other comment in that block. The core reads an indented code block as
-  text.
 - Add page to citation and Toggle author in citation no longer take a number
   after a no-break space in a label for a page. The export never did, so the
   two now agree.

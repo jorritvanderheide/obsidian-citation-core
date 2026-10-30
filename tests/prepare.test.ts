@@ -58,6 +58,18 @@ describe('prepare', () => {
 		expect(prepare('[[okafor2019]] [[new2025]]', vault, { ...options, keys: null }).missing).toEqual({ papers: [], unresolved: [], unpublished: [] });
 	});
 
+	it('keeps %% in code in an HTML block, which pandoc reads as Markdown, and the rest of the note after it', () => {
+		const details = prepare('# Notes\n\n<details>\n<summary>MATLAB</summary>\nCells start with `%%` in MATLAB.\n</details>\n\n## Results\n\nThe effect was large [[smith2020]].\n', vault, options).markdown;
+		expect(details).toContain('Cells start with `%%` in MATLAB.');
+		expect(details).toContain('The effect was large [[smith2020]].');
+		expect(prepare('<br>\nType `%%` to comment.\n\n## Next\n\nMore.\n', vault, options).markdown).toContain('Type `%%` to comment.\n\n# Next\n\nMore.');
+		expect(prepare('<p>Format with `"%%d" % n`.</p>\n\nMore.\n', vault, options).markdown).toBe('<p>Format with `"%%d" % n`.</p>\n\nMore.\n');
+	});
+
+	it('keeps %% in code in an indented code block, and the rest of the note after it', () => {
+		expect(prepare('Run:\n\n    printf `%%d`\n\nThen more.\n', vault, options).markdown).toBe('Run:\n\n    printf `%%d`\n\nThen more.\n');
+	});
+
 	it('leaves an embedded note out, and keeps an embedded image', () => {
 		expect(prepare('Intro.\n\n![[My idea]]\n\n![[figure.png]]\n', vault, options).markdown).toBe('Intro.\n\n\n![](<C:/v/Attachments/figure.png>)\n');
 	});

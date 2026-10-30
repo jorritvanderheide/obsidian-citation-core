@@ -16,9 +16,9 @@ export interface Segment {
 
 /**
  * What a line of the note is, as CommonMark's blocks have it: the opening line
- * of a fenced block, a line inside one, a line of a paragraph or a heading,
- * whose spans are read, or any other line. Lines of one paragraph share a
- * `unit`, and every other line has one of its own.
+ * of a fenced block, a line inside one, a line whose spans are read, or any
+ * other line. Spans are read across the lines that share a `unit`: those of a
+ * paragraph, and those of an HTML or indented code block up to a blank line.
  */
 type LineKind = 'fence' | 'in fence' | 'inline' | 'other';
 
@@ -42,6 +42,9 @@ const HTML_BLOCKS: [RegExp, RegExp | null][] = [
 	[/^<\/?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|section|search|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?:\s|\/?>|$)/i, null],
 	[new RegExp(`^${HTML_TAG}\\s*$`), null],
 ];
+// A line that started a block of its own before the core read CommonMark's
+// blocks, and still breaks a span in an HTML block, as it did then.
+const BLOCK_START = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-*+][ \t]|\d{1,9}[.)][ \t]|\|)/;
 
 /** A line with each tab as the spaces up to the next multiple of four, as CommonMark counts columns. */
 function columns(line: string): string {
@@ -59,7 +62,7 @@ function columns(line: string): string {
  */
 function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 	type Container = { quote: true } | { quote: false; width: number; content: boolean };
-	type Leaf = { kind: 'paragraph'; unit: number } | { kind: 'fence'; char: string; length: number } | { kind: 'indented' } | { kind: 'html'; end: RegExp | null };
+	type Leaf = { kind: 'paragraph'; unit: number } | { kind: 'fence'; char: string; length: number } | { kind: 'indented'; unit: number } | { kind: 'html'; end: RegExp | null; unit: number };
 	const open: Container[] = [];
 	let leaf: Leaf | null = null;
 	let units = 0;
@@ -101,10 +104,19 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 			if (at - offset <= 3 && closing && closing[1]![0] === leaf.char && closing[1]!.length >= leaf.length) leaf = null;
 			return { kind: 'in fence', unit: units++ };
 		}
-		if (all && leaf?.kind === 'indented' && (blank() || nonspace() - offset >= 4)) return { kind: 'other', unit: units++ };
-		if (all && leaf?.kind === 'html' && !(blank() && leaf.end === null)) {
-			if (leaf.end?.test(line)) leaf = null;
-			return { kind: 'other', unit: units++ };
+		// An HTML or indented code block is read for spans, as pandoc reads
+		// Markdown in HTML, and as the core read both before it knew them: as
+		// text, one lone `%%` would hide the rest of the note. A blank line
+		// breaks them, and in HTML so does a line that looks like a block.
+		if (all && ((leaf?.kind === 'indented' && (blank() || nonspace() - offset >= 4)) || (leaf?.kind === 'html' && !(blank() && leaf.end === null)))) {
+			if (blank()) {
+				leaf.unit = units++;
+				return { kind: 'other', unit: units++ };
+			}
+			if (leaf.kind === 'html' && BLOCK_START.test(raw)) leaf.unit = units++;
+			const unit = leaf.unit;
+			if (leaf.kind === 'html' && leaf.end?.test(line)) leaf = null;
+			return { kind: 'inline', unit };
 		}
 		// Any other leaf has ended, and so has a paragraph at a blank line. One
 		// that goes on, in every container or lazily, a block start can still
@@ -126,8 +138,8 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 			if (at - offset >= 4) {
 				if (inParagraph() || blank()) break;
 				start();
-				leaf = { kind: 'indented' };
-				return { kind: 'other', unit: units++ };
+				leaf = { kind: 'indented', unit: units++ };
+				return { kind: 'inline', unit: leaf.unit };
 			}
 			if (rest[0] === '>') {
 				start();
@@ -151,8 +163,9 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
 			if (html !== -1) {
 				start();
 				const end = HTML_BLOCKS[html]![1];
-				if (!end?.test(rest)) leaf = { kind: 'html', end };
-				return { kind: 'other', unit: units++ };
+				const unit = units++;
+				if (!end?.test(rest)) leaf = { kind: 'html', end, unit };
+				return { kind: 'inline', unit };
 			}
 			if (interrupting() && SETEXT_UNDERLINE.test(rest)) {
 				leaf = null;
@@ -212,9 +225,10 @@ function lineKinds(lines: string[]): { kind: LineKind; unit: number }[] {
  * A span can cross a line break, within a paragraph: read line by line, its
  * closing backtick would open a span on the next line, and a comment after it
  * would count as code and be kept. So spans are read over the lines of a
- * paragraph together. A heading's spans are read on its line. An indented
- * code block is text here, with no spans in it: read as text, it only loses
- * what text loses, and the lines of HTML blocks are text too.
+ * paragraph together, and never into the next block. A heading's spans are
+ * read on its line. An HTML block's are read as in a paragraph, since pandoc
+ * reads Markdown in it, and so are an indented code block's, which is text
+ * here: a `%%` in its backticks stays, as Obsidian shows it.
  */
 export function segments(text: string, inline = true): Segment[] {
 	const out: Segment[] = [];

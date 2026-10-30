@@ -68,9 +68,11 @@ list items around them and their lazy lines. A fence indented four spaces past
 its quote or list item is no fence, a closing fence is indented three spaces at
 most, and a block ends with the quote or list item it's in, closed or not. A
 span is read across the lines of one paragraph, and never into the next block.
-An indented code block counts as text, with no spans read in it, which can
-only strip a comment too many. `tests/commonmark.test.ts` holds all of this to
-commonmark.js, CommonMark's reference parser, on thousands of generated notes.
+An indented code block counts as text. Its code spans are read, and so are an
+HTML block's, since pandoc reads Markdown in HTML. Read as text with no spans,
+a single `%%` in backticks there would hide the rest of the note.
+`tests/commonmark.test.ts` holds all of this to commonmark.js, CommonMark's
+reference parser, on thousands of generated notes.
 
 `segments` is there to keep comments from leaking. Where it disagrees with
 CommonMark about what is code, only one kind of mistake matters. That's text it

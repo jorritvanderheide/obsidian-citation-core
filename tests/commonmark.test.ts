@@ -49,6 +49,9 @@ function note(seed: number): string {
 			() => '~~~',
 		]);
 	const words = () => Array.from({ length: int(1, 4) }, piece).join(' ');
+	// Mostly without a marker, for the blocks whose markers CommonMark can't
+	// judge (`expected`), so that most notes still are judged.
+	const quiet = () => (chance(0.2) ? words() : Array.from({ length: int(1, 3) }, () => pick([tag, () => `\`${tag()}\``, () => '`'])).join(' '));
 
 	const fence = (): string[] => {
 		const char = chance(0.6) ? '`' : '~';
@@ -84,12 +87,12 @@ function note(seed: number): string {
 			() => [`${'#'.repeat(int(1, 3))} ${words()}`],
 			fence,
 			fence,
-			() => Array.from({ length: int(1, 2) }, () => `    ${spaces(0, 2)}${words()}`),
+			() => Array.from({ length: int(1, 2) }, () => `    ${spaces(0, 2)}${quiet()}`),
 			() => [`${marker()}`, words(), `${marker()}`],
-			// What ends a paragraph or turns it into a heading, and HTML, whose lines
-			// are neither code nor read for spans.
+			// What ends a paragraph or turns it into a heading, and HTML, which
+			// pandoc reads Markdown in.
 			() => [words(), pick([() => '===', () => '---', () => '***', () => '- - -'])],
-			() => [pick([() => '<div>', () => '<pre>', () => '<span class="a">', () => `<div> ${words()}`]), words(), pick([() => '</div>', () => '</pre>', () => ''])],
+			() => [pick([() => '<div>', () => '<pre>', () => '<span class="a">', () => `<div> ${quiet()}`]), quiet(), pick([() => '</div>', () => '</pre>', () => ''])],
 			() => {
 				// A list item, with lines under it indented by about its content.
 				const bullet = pick([() => '- ', () => '* ', () => '1. ', () => '10) ', () => '-   ', () => '-      ']);
@@ -117,9 +120,9 @@ function note(seed: number): string {
 	return lines.join('\n') + '\n';
 }
 
-type Where = 'code' | 'indented code' | 'text';
+type Where = 'code' | 'indented code' | 'html' | 'text';
 
-/** Where commonmark.js puts each tag: in code, in an indented code block, or in text. */
+/** Where commonmark.js puts each tag: in code, in an indented code block, in an HTML block, or in text. */
 function placed(text: string): Map<string, Where> {
 	const where = new Map<string, Where>();
 	const mark = (literal: string | null, kind: Where) => {
@@ -134,6 +137,7 @@ function placed(text: string): Map<string, Where> {
 			// The info string is the block's language, which nobody reads as text.
 			mark(node.info, 'code');
 		} else if (node.type === 'code') mark(node.literal, 'code');
+		else if (node.type === 'html_block') mark(node.literal, 'html');
 		else mark(node.literal, 'text');
 	}
 	return where;
@@ -144,12 +148,14 @@ function placed(text: string): Map<string, Where> {
  * text pair up, as Obsidian pairs them, and a marker in code is only
  * characters, even inside a comment.
  *
- * An indented code block counts as text, which is the one place `segments`
- * departs from CommonMark on purpose: it is rare in a note, and reading it as
- * text can only strip a comment too many, never keep one.
+ * Or null, for a note with a marker in an HTML or indented code block, where
+ * CommonMark reads no spans and `segments` reads them anyway: pandoc reads
+ * Markdown in HTML, and as text with no spans, one lone `%%` in either would
+ * hide the rest of the note. CommonMark can't say what is right there.
  */
-function expected(text: string): Set<string> {
+function expected(text: string): Set<string> | null {
 	const where = placed(text);
+	if ([...text.matchAll(TAG)].some((match) => match[1] && ['html', 'indented code'].includes(where.get(match[2]!) ?? ''))) return null;
 	const kept = new Set<string>();
 	let open = false;
 	for (const match of text.matchAll(TAG)) {
@@ -163,15 +169,21 @@ function expected(text: string): Set<string> {
 describe('segments, against commonmark.js', () => {
 	it('keeps the comments CommonMark reads as code, and only those', () => {
 		const failures: { note: string; leaked: string[]; lost: string[] }[] = [];
-		for (let seed = 0; seed < Number(process.env.NOTES ?? 3000); seed++) {
+		let checked = 0;
+		const notes = Number(process.env.NOTES ?? 5000);
+		for (let seed = 0; seed < notes; seed++) {
 			const text = note(seed);
 			const out = stripComments(text);
 			const want = expected(text);
+			if (want === null) continue;
+			checked++;
 			const tags = [...text.matchAll(TAG)].map((match) => match[2]!);
 			const leaked = tags.filter((tag) => !want.has(tag) && out.includes(tag));
 			const lost = tags.filter((tag) => want.has(tag) && !out.includes(tag));
 			if (leaked.length > 0 || lost.length > 0) failures.push({ note: text, leaked, lost });
 		}
 		expect(failures.slice(0, 3)).toEqual([]);
+		// Most notes are held to CommonMark, not left out.
+		expect(checked).toBeGreaterThan(notes / 2);
 	});
 });
