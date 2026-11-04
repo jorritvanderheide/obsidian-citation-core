@@ -7,6 +7,7 @@ export * from './core/document';
 export * from './core/markdown';
 export * from './core/paths';
 export * from './core/prepare';
+export * from './core/slides';
 export * from './core/writing';
 export * from './core/built-in';
 export * from './pandoc';

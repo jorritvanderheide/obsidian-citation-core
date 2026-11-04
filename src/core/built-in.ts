@@ -158,7 +158,7 @@ export class Mounts {
 }
 
 /** The fields of a `Run` or `PostRun` that are paths on disk. */
-const PATH_FIELDS = ['obsidian', 'filter', 'afterCiteproc', 'postReferences', 'template', 'fonts', 'metadata', 'references', 'bibliography', 'csl', 'referenceDoc', 'output'] as const;
+const PATH_FIELDS = ['obsidian', 'filter', 'afterCiteproc', 'postReferences', 'slides', 'template', 'fonts', 'metadata', 'references', 'bibliography', 'csl', 'referenceDoc', 'output'] as const;
 
 /**
  * `run` with every path in it as pandoc sees it, through `see`. Its

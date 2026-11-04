@@ -6,7 +6,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { seen } from '../src/core/built-in';
-import { pandocArgs, postArgs, readReferences } from '../src/core/document';
+import { pandocArgs, postArgs, readReferences, slideArgs } from '../src/core/document';
+import { slidesOf } from '../src/core/slides';
 import { builtInPandoc, ExportError, withFiles } from '../src/pandoc';
 import { pandocFor } from '../src/wasm';
 
@@ -52,6 +53,19 @@ describe.skipIf(!wasm)('the built-in pandoc', () => {
 		});
 		expect(text).toBe('As shown ([A 2024](#ref-a)).\n');
 		expect(references).toEqual([{ key: 'a', text: 'A, Ann. 2024. *First Things*. Brill. <https://doi.org/10.1/a>.', url: 'https://doi.org/10.1/a' }]);
+	});
+
+	it('makes slides, with the reference at the foot and math as math', async () => {
+		const p = pandoc();
+		const { text } = slidesOf('As shown [[a]] with $x^2$. %%not for you%%\n\n---\n\nThe end.\n');
+		const html = await withFiles({ 'reference-section-title': 'References' }, async (files) => {
+			await p.run(slideArgs(seen({ ...files, bibliography, csl: null, hardLineBreaks: false, resourcePath: p.see(vault), output: files.slideshow }, (host) => p.see(host))), text);
+			return readFileSync(files.slideshow, 'utf8');
+		});
+		expect(html.match(/class="[^"]*\bslide\b[^"-]*"/g)).toHaveLength(3);
+		expect(html).toContain('slide-reference');
+		expect(html).toContain('<math');
+		expect(html).not.toContain('not for you');
 	});
 
 	it('reads a relative path in your arguments from the vault, as an installed pandoc does', async () => {

@@ -40,7 +40,7 @@ export function stylePath(value: string, home: string): string {
 }
 
 /** What to say when the bibliography a setting names isn't there. */
-export function missingBibliography(path: string, doing: 'export' | 'publish'): string {
+export function missingBibliography(path: string, doing: 'export' | 'publish' | 'present'): string {
 	return `There's no bibliography at ${path}. Point the Bibliography setting at your Better BibTeX export, or clear it to ${doing} without citations.`;
 }
 

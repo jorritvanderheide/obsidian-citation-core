@@ -41,6 +41,8 @@ export interface Options {
 	 * (`linkPosts`), and one without is listed in `missing.unpublished`.
 	 */
 	postOf?: (linkpath: string) => string | null;
+	/** A note read as slides, from `slidesOf`: its first heading stays on its slide, and every heading stays at its level. */
+	slides?: boolean;
 }
 
 export interface Prepared {
@@ -119,7 +121,8 @@ export function prepare(text: string, vault: Vault, options: Options): Prepared 
 	};
 
 	const cited = citeByKey(footnotes(prose), propertyOf);
-	const { title, body: lifted } = liftHeadings(options.postOf ? linkPosts(cited, options.postOf) : cited);
+	const linked = options.postOf ? linkPosts(cited, options.postOf) : cited;
+	const { title, body: lifted } = options.slides ? { title: null, body: linked } : liftHeadings(linked);
 	// Forward slashes, which pandoc reads on every platform.
 	const file = (linkpath: string) => vault.resolve(linkpath)?.file.replace(/\\/g, '/') ?? null;
 	const markdown = imageEmbeds(imageLinks(lifted, file), file);

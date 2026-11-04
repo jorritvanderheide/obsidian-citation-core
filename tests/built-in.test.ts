@@ -207,6 +207,13 @@ describe('seen', () => {
 	});
 });
 
+describe('seen, for slides', () => {
+	it('gives the slide filter a path pandoc can open', () => {
+		const mounts = new Mounts('/home/ann/Vault', posix);
+		expect(seen({ slides: '/tmp/x/slides.lua' }, (host) => mounts.see(host)).slides).toBe('/.pandoc-1/slides.lua');
+	});
+});
+
 describe('seenArgs', () => {
 	it('has the paths in your arguments as pandoc sees them, and leaves the rest', () => {
 		const mounts = new Mounts('/home/ann/Vault', posix);

@@ -443,6 +443,28 @@ export function postArgs(post: Post, run: PostRun): string[] {
 	return args;
 }
 
+export type SlideRun = Pick<PostRun, 'obsidian' | 'filter' | 'afterCiteproc' | 'metadata' | 'bibliography' | 'csl' | 'resourcePath' | 'hardLineBreaks' | 'output'> & {
+	/** The filter that makes the slides, on disk. */
+	slides: string;
+};
+
+/**
+ * Pandoc's arguments for a note read as slides, from `slidesOf`. The note is
+ * read as for a document (`reading`), and so are its citations; then
+ * `slides.lua` makes each slide, and its foot, out of what citeproc wrote.
+ *
+ * - The writer is `html5`, which keeps math as math: `obsidian.lua` writes it
+ *   as code for `html`, a post, because a site draws none.
+ * - No template: a plugin shows the slides in a window of its own.
+ */
+export function slideArgs(run: SlideRun): string[] {
+	const args = reading(run);
+	args.push('--to=html5', '--wrap=none', '--citeproc', `--lua-filter=${run.afterCiteproc}`, `--lua-filter=${run.slides}`);
+	if (run.csl) args.push(`--csl=${run.csl}`);
+	args.push(`--output=${run.output}`);
+	return args;
+}
+
 /** A work a Markdown post cites, as `post-references.lua` writes it. */
 export interface Reference {
 	key: string;

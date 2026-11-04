@@ -144,3 +144,37 @@ one of two things:
 In both, `pandoc/obsidian.lua` writes math as written, in code, and math in a
 paragraph of its own as a code block: a site draws no math, and GitHub's
 Markdown would write it in a form only GitHub draws. A document keeps it.
+
+## A note as slides
+
+`slidesOf` in `src/core/slides.ts` runs before `prepare`. It's the one place a
+note is split into slides, because the notes have to land on the right slide
+and comments never reach pandoc:
+
+1. **Take out the comments** (`splitComments`), the same way `stripComments`
+   does, keeping the words of each `%%comment%%`. These are what you say over
+   the slide, and they leave here on their own, so they can't end up on a slide
+   or in a file. An HTML comment stays yours alone.
+2. **Find the breaks.** A break is `---` alone at the start of a line, with a
+   blank line or a heading above it, or nothing at all. Directly under a line
+   of text it makes that line a heading, indented it can belong to a list, and
+   in code it is code, and in a `:::` block it stays a rule. `***` and `___` stay
+   rules. In an HTML block a break is still read, so pandoc makes fewer slides than
+   `slidesOf` finds, and a plugin has to say so.
+3. **Mark each break** with a `.slide-break` div, and drop any slide with no
+   words and no notes.
+
+`prepare` then reads the marked note with `slides: true`, which leaves the first
+heading on its slide and every heading at its level. `slideArgs` reads it as
+for a document, and writes `html5`, because `obsidian.lua` writes math as code
+for `html`, which is a post.
+
+`pandoc/slides.lua` runs last, after `after-citeproc.lua`. It makes one `.slide`
+of each piece and writes math as MathML. Each slide gets a `.slide-foot` with
+the full reference of each work it cites, in a `.slide-reference`, and its
+footnotes, in a `.slide-note`, numbered from 1 on each slide. A citation that
+became a footnote, under a style that cites in them, gets no reference as well,
+since the footnote has the page and the reference doesn't. The reference list
+goes on a `.slide.references` of its own, at the end. Which element a slide is
+differs, since pandoc writes a `section` for one that starts with a heading, so
+a plugin finds them by class.

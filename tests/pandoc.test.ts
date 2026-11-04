@@ -6,9 +6,10 @@ import { join } from 'path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { BUILT_IN } from '../src/core/built-in';
 import { bibKeys, keyOf, renameInAlias } from '../src/core/citations';
-import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused } from '../src/core/document';
+import { inputFiles, MARKDOWN_TEMPLATE, pandocArgs, postArgs, readReferences, refused, slideArgs } from '../src/core/document';
 import { footnotes, wikilinked, wikilinks } from '../src/core/markdown';
 import { prepare } from '../src/core/prepare';
+import { slidesOf } from '../src/core/slides';
 import { isLocator } from '../src/core/writing';
 import { random } from './random';
 
@@ -768,5 +769,154 @@ describe.skipIf(!installed())('a post', () => {
 		} finally {
 			writeFileSync(metadata, '{}');
 		}
+	});
+});
+
+const slidesFilter = join(process.cwd(), 'pandoc', 'slides.lua');
+
+// A style that cites in footnotes, with a reference list.
+const NOTE_CSL =
+	'<?xml version="1.0" encoding="utf-8"?>\n<style xmlns="http://purl.org/net/xbiblio/csl" class="note" version="1.0">\n' +
+	'  <info><title>Notes</title><id>slide-notes</id><updated>2026-11-04T00:00:00+00:00</updated></info>\n' +
+	'  <citation><layout suffix="." delimiter="; "><names variable="author"><name form="short"/></names><text variable="title" prefix=", "/><text variable="locator" prefix=", "/></layout></citation>\n' +
+	'  <bibliography><layout><names variable="author"/><text variable="title" prefix=", "/></layout></bibliography>\n' +
+	'</style>\n';
+
+/** A note as slides, with Take the Floor's arguments: each slide's HTML, and the notes apart. */
+function deck(note: string, options: { bibliography?: string | null; csl?: string | null } = {}): { slides: string[]; notes: string[]; html: string } {
+	const { text, notes } = slidesOf(note);
+	const { markdown } = prepare(text, { resolve: () => null, parseYaml: () => ({}) }, { name: 'deck', papersFolder: '', keyProperty: 'citekey', keys: null, noteStyle: false, slides: true });
+	const output = join(dir, 'slides.html');
+	writeFileSync(metadata, JSON.stringify({ 'reference-section-title': 'References' }));
+	try {
+		execFileSync('pandoc', slideArgs({ obsidian, filter, slides: slidesFilter, afterCiteproc, metadata, bibliography: options.bibliography === undefined ? bib : options.bibliography, csl: options.csl ?? null, hardLineBreaks: false, resourcePath: dir, output }), { input: markdown });
+	} finally {
+		writeFileSync(metadata, '{}');
+	}
+	const html = readFileSync(output, 'utf8');
+	return { slides: html.split(/(?=<(?:section|div)[^>]*class="(?:[^"]*\s)?slide(?:\s[^"]*)?")/).filter((part) => part.trim() !== ''), notes, html };
+}
+
+describe.skipIf(!installed())('a note as slides', () => {
+	it('makes one slide for each, its first heading included', () => {
+		const { slides, notes } = deck('# Talk\n\nOne\n\n---\n\n## Two\n\nWords\n');
+		expect(slides).toHaveLength(2);
+		expect(notes).toHaveLength(2);
+		expect(slides[0]).toMatch(/<h1[^>]*>Talk<\/h1>|Talk/);
+		expect(slides[1]).toContain('Words');
+	});
+
+	it.each([
+		['a list before the break', '- a\n- b\n\n---\n\nTwo', 2],
+		['a break right after a list item, with a blank line', '1. a\n\n---\n\n2. b', 2],
+		['a quote before the break', '> a\n\n---\n\nTwo', 2],
+		['a callout before the break', '> [!note] A\n> b\n\n---\n\nTwo', 2],
+		['a table before the break', '| a |\n| - |\n| b |\n\n---\n\nTwo', 2],
+		['a line of text over ---, a heading', 'A title\n---\n\nStill one', 1],
+		['a rule that stays a rule', 'One\n\n***\n\nStill one', 1],
+		['--- in a code block', '```\n\n---\n\n```', 1],
+		['--- in an unclosed code block', 'One\n\n```\n\n---\n\nStill code', 1],
+		['--- in a quote', '> a\n>\n> ---\n>\n> b', 1],
+		['--- in a list item', '- a\n\n  ---\n\n  b', 1],
+		['a code block right before the break', '```\ncode\n```\n---\nTwo', 2],
+		['a break under a heading', '# One\n---\nTwo', 2],
+		['Windows line endings', 'One\r\n\r\n---\r\n\r\nTwo\r\n', 2],
+		['a math block with a blank line', '$$\na\n$$\n\n---\n\nTwo', 2],
+		['raw HTML before the break', '<div>a</div>\n\n---\n\nTwo', 2],
+		['an empty note', '', 1],
+		['a note with only breaks', '\n---\n\n---\n', 1],
+		['--- in a ::: block', '::: note\n\nA\n\n---\n\nB\n\n:::', 1],
+		['a break after a ::: block', '::: note\n\nA\n\n:::\n\n---\n\nB', 2],
+	])('agrees with slidesOf on %s', (_, note, count) => {
+		const { slides, notes } = deck(note, { bibliography: null });
+		expect(notes).toHaveLength(count);
+		expect(slides).toHaveLength(count);
+	});
+
+	it('never lets a note reach a slide', () => {
+		const { html, notes } = deck('One %%secret [[a]]%%\n\n---\n\nTwo <!-- private -->');
+		expect(notes[0]).toBe('secret [[a]]');
+		expect(html).not.toContain('secret');
+		expect(html).not.toContain('private');
+	});
+
+	it('puts the full reference at the foot of each slide that cites it, and nowhere else', () => {
+		const { slides } = deck('Claim [[a|a, p. 12]].\n\n---\n\nNothing cited.\n\n---\n\nAgain [[a]] and [[b]], [[a]].');
+		expect(slides).toHaveLength(4);
+		expect(slides[0]).toContain('(A 2024, 12)');
+		expect(slides[0]).toContain('slide-reference');
+		expect(slides[0]).toContain('First');
+		expect(slides[1]).not.toContain('slide-foot');
+		expect(slides[2]).toContain('Second');
+		expect(slides[2]!.match(/slide-reference/g)).toHaveLength(2);
+	});
+
+	it('closes with the reference list on a slide of its own', () => {
+		const { slides } = deck('Claim [[a]].\n\n---\n\nThe end.');
+		expect(slides).toHaveLength(3);
+		expect(slides[1]).not.toContain('References');
+		expect(slides[2]).toMatch(/class="[^"]*\bslide references"/);
+		expect(slides[2]).toContain('References');
+		expect(slides[2]).toContain('First');
+	});
+
+	it('has no closing slide with nothing to list', () => {
+		expect(deck('No citations.').slides).toHaveLength(1);
+		expect(deck('[[a]] and no bibliography.', { bibliography: null }).slides).toHaveLength(1);
+	});
+
+	it('keeps a link to a note of yours as its words', () => {
+		expect(deck('See [[My idea|this idea]].').slides[0]).toContain('See this idea.');
+	});
+
+	it('puts footnotes at the foot of their slide, numbered from 1 on each', () => {
+		const { slides, html } = deck('One.[^x]\n\n---\n\nTwo.[^y]\n\n[^x]: First note.\n[^y]: Second note.\n');
+		expect(slides[0]).toContain('First note.');
+		expect(slides[0]).toContain('<sup>1</sup>');
+		expect(slides[1]).toContain('Second note.');
+		expect(slides[1]).toContain('<sup>1</sup>');
+		expect(html).not.toContain('footnotes');
+		expect(html).not.toContain('footnote-ref');
+	});
+
+	it('finds a footnote defined on another slide', () => {
+		const { slides } = deck('Later.[^x]\n\n---\n\n[^x]: Defined here.\n\nTwo\n');
+		expect(slides[0]).toContain('Defined here.');
+		expect(slides[1]).not.toContain('Defined here.');
+	});
+
+	it('in a style that cites in footnotes, keeps the page, and adds no second reference', () => {
+		const csl = join(dir, 'note.csl');
+		writeFileSync(csl, NOTE_CSL);
+		const { slides } = deck('Claim [[a|a, p. 12]].', { csl });
+		expect(slides[0]).toContain('slide-note');
+		expect(slides[0]).toContain('12');
+		expect(slides[0]).not.toContain('slide-reference');
+		expect(slides[0]).toContain('<sup>1</sup>');
+		expect(slides).toHaveLength(2);
+	});
+
+	it('keeps math as math', () => {
+		const { html } = deck('Inline $x^2$.\n\n$$a = b$$\n');
+		expect(html).toContain('<math');
+		expect(html).not.toContain('<code>$');
+	});
+
+	it('leaves a web address of an image as it is', () => {
+		expect(deck('![](<app://abc/My%20Fig.png?123>)').html).toContain('src="app://abc/My%20Fig.png?123"');
+	});
+
+	it('leaves math in an image description as words', () => {
+		expect(deck('![$z$](a.png)').html).toContain('alt="z"');
+	});
+
+	it('leaves a rule on its slide', () => {
+		expect(deck('One\n\n***\n\nStill one').html).toContain('<hr');
+	});
+
+	it('survives an unclosed code block on the last slide', () => {
+		const { slides } = deck('One\n\n---\n\n```\nnever closed');
+		expect(slides).toHaveLength(2);
+		expect(slides[1]).toContain('never closed');
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitFrontmatter, stripBlockIds, stripComments, stripTags, unshown, wikilinked, wikilinks } from '../src/core/markdown';
+import { citeByKey, dropPluginBlocks, linkPosts, footnotes, imageEmbeds, imageLinks, liftHeadings, segments, splitComments, splitFrontmatter, stripBlockIds, stripComments, stripTags, unshown, wikilinked, wikilinks } from '../src/core/markdown';
 
 describe('segments', () => {
 	// Each of these took seconds to a minute when every level of nesting read
@@ -553,5 +553,21 @@ describe('unshown', () => {
 
 	it('names a block with nothing inside by its opening line', () => {
 		expect(unshown('```mermaid\n```\n', 'markdown')).toEqual([{ kind: 'mermaid', written: ['```mermaid'] }]);
+	});
+});
+
+describe('splitComments', () => {
+	it('keeps the words of a %%comment%%, and where it stood', () => {
+		expect(splitComments('One %%say\nthis%% two <!-- mine --> %%open')).toEqual({
+			visible: 'One  two  ',
+			comments: [
+				{ at: 4, text: 'say\nthis' },
+				{ at: 10, text: 'open' },
+			],
+		});
+	});
+
+	it('keeps code inside a comment as its words, and code outside as text', () => {
+		expect(splitComments('`%%a%%` %%b `c` d%%')).toEqual({ visible: '`%%a%%` ', comments: [{ at: 8, text: 'b `c` d' }] });
 	});
 });

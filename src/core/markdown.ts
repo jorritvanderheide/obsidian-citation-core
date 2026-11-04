@@ -370,12 +370,34 @@ const COMMENT = /%%|<!--/;
  * to the end of the note, the cautious reading of a comment nobody closed.
  */
 export function stripComments(text: string): string {
+	return splitComments(text).visible;
+}
+
+/** A `%%comment%%`'s words, and how far into the note without its comments it stood. */
+export interface NoteComment {
+	at: number;
+	text: string;
+}
+
+/**
+ * The note without its comments, as `stripComments` says, and its
+ * `%%comments%%`. An HTML comment is never kept, here or anywhere.
+ */
+export function splitComments(text: string): { visible: string; comments: NoteComment[] } {
 	// What closes the comment we are in, or null outside one.
 	let closer: string | null = null;
-	let out = '';
+	let visible = '';
+	let words = '';
+	const comments: NoteComment[] = [];
+	const finish = () => {
+		if (closer === '%%') comments.push({ at: visible.length, text: words });
+		closer = null;
+		words = '';
+	};
 	for (const segment of segments(text)) {
 		if (segment.code) {
-			if (closer === null) out += segment.text;
+			if (closer === null) visible += segment.text;
+			else words += segment.text;
 			continue;
 		}
 		let rest = segment.text;
@@ -383,21 +405,27 @@ export function stripComments(text: string): string {
 			if (closer === null) {
 				const open = COMMENT.exec(rest);
 				if (!open) {
-					out += rest;
+					visible += rest;
 					break;
 				}
-				out += rest.slice(0, open.index);
+				visible += rest.slice(0, open.index);
 				closer = open[0] === '%%' ? '%%' : '-->';
 				rest = rest.slice(open.index + open[0].length);
 			} else {
 				const at = rest.indexOf(closer);
-				if (at === -1) break;
+				if (at === -1) {
+					words += rest;
+					break;
+				}
+				words += rest.slice(0, at);
 				rest = rest.slice(at + closer.length);
-				closer = null;
+				finish();
 			}
 		}
 	}
-	return out;
+	// One left open runs to the end of the note.
+	finish();
+	return { visible, comments };
 }
 
 const PLUGIN_BLOCK = /^(?:[ \t]*>)*[ \t]*(?:`{3,}|~{3,})[ \t]*(?:dataview|dataviewjs|tasks|query|base)(?![\w-])/;

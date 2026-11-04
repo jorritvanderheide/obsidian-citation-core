@@ -145,3 +145,17 @@ describe('a post', () => {
 		expect(prepare('==Marked==', draftVault, options).unshown).toEqual([]);
 	});
 });
+
+describe('a note read as slides', () => {
+	it('keeps its first heading on its slide, and every heading at its level', () => {
+		const { markdown, metadata } = prepare('# On archives\n\n## Argument\n', vault, { ...options, slides: true });
+		expect(markdown).toBe('# On archives\n\n## Argument\n');
+		expect(metadata.title).toBe('note');
+	});
+
+	it('still checks its citations and resolves its images', () => {
+		const { markdown, missing } = prepare('[[okafor2019]] ![[figure.png]]', vault, { ...options, slides: true });
+		expect(missing.papers).toEqual(['okafor2019']);
+		expect(markdown).toContain('![](<C:/v/Attachments/figure.png>)');
+	});
+});
