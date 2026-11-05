@@ -4,7 +4,7 @@ What changed in each version of the core, newest first. A plugin's own
 changelog says what of this its users notice, in the release that moves to it.
 Each version is a tag, and a plugin pins only a tagged commit.
 
-## Unreleased
+## 0.6.0
 
 - A note can be read as slides. `slidesOf` splits it at each `---` and keeps each
   slide's `%%comments%%` apart as what you say over it, `prepare` takes a
